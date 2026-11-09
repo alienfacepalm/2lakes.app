@@ -1,0 +1,31 @@
+---
+description: Keep repo clean — pnpm only, no stray lockfiles or build artifacts
+alwaysApply: true
+---
+
+# Repo hygiene
+
+## Package manager: pnpm only
+
+- Use **pnpm** everywhere (`pnpm install`, `pnpm add`, `pnpm exec`). Never run `npm install`, `npm ci`, or `yarn`.
+- Lockfiles: commit **`pnpm-lock.yaml`** only. Never commit or leave behind `package-lock.json` or `yarn.lock`.
+- Root and `mobile/` both pin **`pnpm@11.5.0`** via `packageManager` in each `package.json`.
+- After dependency changes, run `pnpm install` in the affected package and commit the updated lockfile.
+
+## Delete stray artifacts when you see them
+
+Remove and do not commit:
+
+| Artifact | Why |
+|----------|-----|
+| `package-lock.json`, `yarn.lock` | Wrong package manager |
+| `node_modules/`, `.pnpm-store/` | Install output |
+| `dist/`, `build/`, `coverage/` | Build/test output |
+| `*.tsbuildinfo`, `test-results/`, `playwright-report/` | Tooling output |
+| Duplicate files (e.g. `Foo.tsx` + `foo.tsx`) | Windows casing drift |
+
+## When cleaning up
+
+- If `package-lock.json` appears after someone used npm, delete it and regenerate with `pnpm install`.
+- Prefer one canonical filename per module (**`filenames.mdc`** — kebab-case under `src/` and `mobile/src/`).
+- Do not add npm/yarn scripts or CI steps; mobile CI already uses pnpm.

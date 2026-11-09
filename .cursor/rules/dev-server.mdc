@@ -1,0 +1,38 @@
+---
+description: Dev server — fixed port, kill to reclaim, refresh browser tab (no port hopping)
+alwaysApply: true
+---
+
+# Dev server
+
+**Port policy:** [`port-reclaim.mdc`](port-reclaim.mdc) — if busy, kill and claim; never hop ports.
+
+**One port per package.** If the port is occupied, **kill the listener, reclaim the port, then start `pnpm dev`.**
+
+## Ports
+
+| Package | Command (from package dir) | Port | URL |
+|---------|----------------------------|------|-----|
+| Repo root | `pnpm dev` | **3000** | `http://localhost:3000/` |
+| `mobile/` | `pnpm dev` | **5173** | `http://127.0.0.1:5173/` |
+
+Both `dev` scripts run **`dev-port.mjs free`** first (auto-kill stale listeners).
+
+Manual reclaim: `pnpm dev:port:free` · Status: `pnpm dev:port:status`
+
+## Starting dev (agent workflow)
+
+1. From the correct package directory, run **`pnpm dev`** (background OK).
+   - Port busy → script kills the owner and starts on the fixed port.
+   - **Do not** use `5174+`, `--port` overrides, or bare `vite` / `tsx` without the port guard.
+2. **Browser** — after the server is up:
+   - `browser_tabs` → **list**
+   - If a tab already shows the dev URL (or same host/port) → **`browser_navigate`** to that URL on that tab (refresh).
+   - Otherwise → **`browser_navigate`** to the dev URL (reuses the active tab; set `newTab: true` only if no tab exists or user asks).
+   - **Do not** open the app on a different port.
+
+## Do not
+
+- Start a second dev server on another port when the fixed port is taken.
+- Leave orphan listeners blocking 3000 or 5173 — always reclaim with `pnpm dev` or `pnpm dev:port:free`.
+- Open `localhost:5174+` or alternate URLs to “work around” a conflict.

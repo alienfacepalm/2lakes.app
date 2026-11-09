@@ -1,0 +1,161 @@
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@700;900&family=Inter:wght@400;500;600&family=Space_Grotesk:wght@500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-headline: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-label: "Space Grotesk", ui-monospace, SFMono-Regular, monospace;
+
+  --color-primary: #004a77;
+  --color-primary-container: #004a77;
+  --color-secondary: #3b6a01;
+  --color-tertiary: #0c4a6e;
+  --color-tertiary-container: #164e63;
+  --color-on-tertiary-container: #22d3ee;
+  --color-surface: #f2f2f7;
+  --color-surface-container-low: #ffffff;
+  --color-surface-container-highest: #e5e5ea;
+  --color-on-surface: #1c1c1e;
+  --color-on-surface-variant: #3a3a3c;
+}
+
+@variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --color-primary: #004a77;
+    --color-surface: #f2f2f7;
+    --color-surface-container-low: #ffffff;
+    --color-on-surface: #1c1c1e;
+    --color-on-surface-variant: #3a3a3c;
+  }
+
+  .dark {
+    --color-primary: #5da8ff;
+    --color-surface: #000000;
+    --color-surface-container-low: #1c1c1e;
+    --color-surface-container-highest: #3a3a3c;
+    --color-on-surface: #ffffff;
+    --color-on-surface-variant: #d1d1d6;
+    
+    --color-tertiary-container: #0e3a52;
+    --color-on-tertiary-container: #67e8f9;
+  }
+
+  .is-basic-mode {
+    --color-primary: #000000;
+    --color-primary-container: #000000;
+    --color-surface: #ffffff;
+    --color-surface-container-low: #ffffff;
+    --color-surface-container-highest: #eeeeee;
+    --color-on-surface: #000000;
+    --color-on-surface-variant: #333333;
+  }
+
+  .dark.is-basic-mode {
+    --color-primary: #ffffff;
+    --color-primary-container: #ffffff;
+    --color-surface: #000000;
+    --color-surface-container-low: #000000;
+    --color-surface-container-highest: #222222;
+    --color-on-surface: #ffffff;
+    --color-on-surface-variant: #cccccc;
+  }
+
+  html, body {
+    @apply h-full overflow-hidden;
+  }
+
+  body {
+    @apply bg-surface text-on-surface font-body antialiased transition-colors duration-300 max-sm:select-none;
+  }
+}
+
+/* Lake-inspired backgrounds based on time of day */
+.lake-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  transition: all 2s ease-in-out;
+}
+
+.lake-bg-dawn {
+  background: linear-gradient(180deg, #ffafbd 0%, #ffc3a0 50%, #2193b0 100%);
+  opacity: 0.15;
+}
+
+.lake-bg-day {
+  background: radial-gradient(circle at 50% -20%, #7f7fd5, #86a8e7, #91eae4);
+  opacity: 0.1;
+}
+
+.lake-bg-dusk {
+  background: linear-gradient(180deg, #2c3e50 0%, #fd746c 100%);
+  opacity: 0.15;
+}
+
+.lake-bg-night {
+  background: radial-gradient(circle at 50% 100%, #0f2027, #203a43, #2c5364);
+  opacity: 0.2;
+}
+
+/* Subtle wave pattern */
+.lake-waves {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: url("data:image/svg+xml,%3Csvg width='100' height='20' viewBox='0 0 100 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M21.1,18.3c6.5,0,12.7-1.5,18.5-4.3c14.1-7,31-7,45.1,0c5.8,2.8,12,4.3,18.5,4.3' fill='none' stroke='%23000' stroke-opacity='0.03' stroke-width='0.5'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  opacity: 0.5;
+}
+
+.dark .lake-waves {
+  background-image: url("data:image/svg+xml,%3Csvg width='100' height='20' viewBox='0 0 100 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M21.1,18.3c6.5,0,12.7-1.5,18.5-4.3c14.1-7,31-7,45.1,0c5.8,2.8,12,4.3,18.5,4.3' fill='none' stroke='%23fff' stroke-opacity='0.05' stroke-width='0.5'/%3E%3C/svg%3E");
+}
+
+.hero-gradient {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-container) 100%);
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Custom Scrollbar Styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}

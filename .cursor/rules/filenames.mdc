@@ -1,0 +1,54 @@
+---
+description: File and directory naming — kebab-case on disk, PascalCase symbols in code
+globs: "{src,mobile}/**/*"
+alwaysApply: true
+---
+
+# File and directory naming
+
+**kebab-case** for every new file and directory under `src/` (repo root) and `mobile/`. React component **symbols** stay **PascalCase**; only **paths on disk** follow this rule.
+
+## Source (`src/**`, `mobile/src/**`)
+
+| Location | File pattern | Example |
+|----------|--------------|---------|
+| `components/**` | **kebab-case** `.tsx` | `icon-gallery.tsx`, `settings-menu.tsx` |
+| `pages/**` | **kebab-case** `.tsx` | `tos-page.tsx` |
+| `lib/`, `hooks/`, `context/` | **kebab-case** `.ts` / `.tsx` | `buoy-api.ts`, `seasonal-background.ts` |
+| `test/**` | **kebab-case** | `fixtures/king-county.ts`, `setup.ts` |
+
+- **Directories** use **kebab-case**.
+- **Tests** mirror the module: `buoy-api.test.ts`, `icon-gallery.test.tsx`.
+
+### Toolchain entry files (keep as-is)
+
+Bundler or framework entry files the toolchain expects by name:
+
+- `src/main.tsx`, `index.html`
+- `vite.config.ts`, `vitest.config.ts`, `playwright.config.ts`, `eslint.config.js`
+- `server.ts` (repo root Express entry)
+- `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json`
+
+Everything else under `src/` must be kebab-case (including `app.tsx`, not `App.tsx`).
+
+## Docs, store, scripts
+
+| Location | Pattern | Example |
+|----------|---------|---------|
+| `docs/` | **kebab-case** `.md` | `cors.md` |
+| `store/` | **kebab-case** | `packaging.md` |
+| `scripts/` | **kebab-case** `.mjs` | `dev-port.mjs` |
+| `e2e/` | **kebab-case** | `app-routes.spec.ts` |
+
+Repo root `README.md` is fine (standard).
+
+## Cursor rules (`.cursor/rules/`)
+
+`<topic>.mdc` — lowercase kebab-case, short and specific.
+
+## When editing
+
+- **New files** must follow the tables above in both root and `mobile/`.
+- **Renames** update every import, doc link, and CI path in the same change.
+- **Windows:** case-only renames need a two-step move (`_tmp.tsx` → `app.tsx`) — NTFS is case-insensitive.
+- **Legacy PascalCase** files (e.g. root `App.tsx`) — rename to kebab-case when you touch them; do not add new PascalCase paths.

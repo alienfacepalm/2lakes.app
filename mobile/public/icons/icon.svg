@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="2lakes.app">
+  <rect width="512" height="512" rx="96" fill="#001e40"/>
+  <path d="M64 320c48-40 96-24 128 0s80 40 128 0 96-24 128 0v128H64V320z" fill="#0ea5e9" opacity="0.9"/>
+  <path d="M96 288c40-32 80-16 104 0s64 32 104 0 80-16 104 0v32H96V288z" fill="#38bdf8"/>
+  <path d="M200 120 L312 120 L256 48 Z" fill="#e2e8f0"/>
+  <circle cx="256" cy="200" r="8" fill="#ccff00"/>
+</svg>

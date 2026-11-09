@@ -1,0 +1,31 @@
+---
+description: pnpm only — root and mobile; no npm/yarn lockfiles
+alwaysApply: true
+---
+
+# Package manager (locked)
+
+## pnpm only
+
+- **pnpm only** — never `npm install`, `npm ci`, `yarn`, or commit `package-lock.json` / `yarn.lock`.
+- `packageManager` pins **pnpm@11.5.0** in root and `mobile/package.json`.
+- Lockfiles: **`pnpm-lock.yaml`** per package (repo root and `mobile/`).
+- Node **>=22** (`engine-strict=true` in each `.npmrc`).
+
+## Commands by package
+
+| Task | Repo root (`./`) | Mobile (`mobile/`) |
+|------|------------------|---------------------|
+| Install | `pnpm install` | `pnpm install` |
+| Dev | `pnpm dev` (port **3000**, auto-reclaims) | `pnpm dev` (port **5173**, auto-reclaims) |
+| Build | `pnpm build` | `pnpm build` |
+| Lint | `pnpm lint` | `pnpm lint` |
+| Tests | — | `pnpm test`, `pnpm test:pr`, `pnpm test:e2e` |
+| Deploy | — | `pnpm deploy` |
+
+Run commands from the package directory that owns the changed files.
+
+## When editing
+
+- After changing any `package.json`, run `pnpm install` in that directory and commit the updated lockfile.
+- See **`repo-hygiene.mdc`** for stray lockfile cleanup.

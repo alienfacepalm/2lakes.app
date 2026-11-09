@@ -1,0 +1,45 @@
+---
+description: Deliverable work — commit and push only on a feature branch, then open PR
+alwaysApply: true
+---
+
+# Branch, commit, push, PR
+
+**Deliverable work** must use a feature branch for commit and push, then open a PR. Never land shippable changes on `main` / `master`.
+
+Related: **`feature-branches.mdc`**, **`feature-ship.mdc`**.
+
+## Non-negotiable
+
+1. **Branch first** — before the first commit on deliverable work, be on `<type>/<short-kebab>` (not default).
+2. **Commit on branch only** — no deliverable commits on `main` / `master`.
+3. **Push the same branch** — `git push -u origin HEAD` after commit when shipping.
+4. **Open PR** — `gh pr create` targeting default; return the PR URL.
+
+**Commit → push → PR** is one workflow. Do not stop after commit or push alone.
+
+## Before every commit or push
+
+```bash
+git branch --show-current
+```
+
+| Branch | Deliverable change? | Action |
+|--------|---------------------|--------|
+| `main` / `master` | Yes | Stop — `git checkout -b <type>/<name>`, then commit |
+| `feat/*`, `fix/*`, etc. | Yes | Commit → push → PR |
+| Any | User said WIP / commit only / no PR | Commit only if asked; no push/PR |
+
+Branch prefix must match the change (`feat/`, `fix/`, `chore/`, `docs/`).
+
+## PR requirements
+
+- Base: repo default (`main` or `master`).
+- Body: **Summary** + **Test plan** (commands run).
+- Use `gh pr create` with HEREDOC body.
+
+## Exceptions
+
+- User explicitly commits to default branch.
+- Nothing to commit — report done; no empty commit.
+- Force-push, merge PR, delete remote branch — ask first.

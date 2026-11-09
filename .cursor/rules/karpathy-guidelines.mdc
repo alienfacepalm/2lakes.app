@@ -1,0 +1,45 @@
+---
+description: Karpathy coding guidelines — think first, simplicity, surgical diffs, verified goals
+alwaysApply: true
+---
+
+# Karpathy guidelines
+
+Behavioral guardrails for all code work in **repo root and `mobile/`**. Related: **`tests.mdc`**, **`filenames.mdc`**.
+
+## Do not break anything
+
+- **Preserve behavior** unless the task explicitly changes it.
+- **Verify before ship:** run scoped tests/build for touched paths; fix regressions before finishing.
+- Refactors and file splits are **behavior-neutral** — same public API, same UX, same data shapes.
+- When uncertain, prefer the **smaller diff** over a clever rewrite.
+
+## 1. Think before coding
+
+- State assumptions; surface tradeoffs when approaches differ.
+- Ask only on genuine ambiguity.
+- If something is unclear, name it before editing.
+
+## 2. Simplicity first
+
+- Minimum code that solves the task — no speculative features or abstractions.
+- No configurability nobody asked for.
+- If the diff feels overbuilt, simplify.
+
+## 3. Surgical changes
+
+- Every changed line should trace to the request.
+- Match existing style; no drive-by refactors or unrelated cleanup.
+- Remove orphans **your** edit created; leave pre-existing dead code unless asked.
+
+## 4. Goal-driven execution
+
+Turn requests into verifiable checks:
+
+| Request | Verify |
+|---------|--------|
+| Bug fix | Test reproduces failure, then passes |
+| New behavior | Test or manual step proves it works |
+| Refactor / split | Tests pass; exports and imports unchanged |
+
+Brief plan for multi-step work: step → verify, step → verify.

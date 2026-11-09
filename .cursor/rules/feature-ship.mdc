@@ -1,0 +1,52 @@
+---
+description: Feature-complete workflow — branch, test, commit, push, open PR
+alwaysApply: true
+---
+
+# Feature ship
+
+When **feature delivery is complete**, run the ship workflow below without asking. **Commit, push, and PR rules:** **`branch-commit-pr.mdc`**.
+
+Related: **`feature-branches.mdc`**, **`tests.mdc`**, **`pnpm.mdc`**.
+
+## What counts as a feature
+
+- New user-facing capability, data/API change, or multi-file behavior change the user asked to deliver.
+- Not: drive-by refactors, read-only Q&A, or a one-line typo unless the user scoped it as shippable work.
+
+## Before editing (branch)
+
+Per **`branch-commit-pr.mdc`**: verify branch before any commit.
+
+1. `git branch --show-current`
+2. If on `main` / `master` and the task is feature work → create and use a feature branch (**`feature-branches.mdc`**).
+
+## When the feature is complete (ship)
+
+Execute in order; do not stop after commit.
+
+1. **Test** — run what matches the diff:
+
+   | Changed paths | Run (from correct directory) |
+   |---------------|------------------------------|
+   | `mobile/src/**` (TS/TSX) | `cd mobile && pnpm test:pr` |
+   | `mobile/e2e/**`, `playwright.config.ts` | `cd mobile && pnpm test:e2e` |
+   | `mobile/scripts/**` | `cd mobile && pnpm test:scripts` |
+   | Root `src/**`, `server.ts` | `pnpm lint && pnpm build` (repo root) |
+   | Docs / `.cursor/**` only | `pnpm lint` if TS touched; otherwise skip |
+   | **Both root and mobile** | Run checks for each touched package |
+   | **Unsure** | `cd mobile && pnpm test:pr` plus root `pnpm build` if root changed |
+
+   List the commands you ran in the PR **Test plan**.
+2. **Review diff** — `git status`, `git diff`, `git log -5` for commit message style.
+3. **Commit → push → PR** — on the feature branch only (**`branch-commit-pr.mdc`**):
+   - Commit — stage relevant files; imperative message (`feat:`, `fix:`, `chore:`).
+   - Push — `git push -u origin HEAD`.
+   - PR — `gh pr create` with Summary + Test plan; return the PR URL.
+
+## Skip auto-ship (do not push or open PR)
+
+- User said **WIP**, **don't push**, **no PR**, or **commit only**.
+- **Build or lint failing** after a fix attempt — report blocker instead of shipping.
+- **Nothing to commit** — report done; no empty commit.
+- **Force-push**, **merge PR**, **delete remote branch** — ask first.

@@ -1,0 +1,84 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: buoy_snapshots
+// Document ID: auto-generated
+// Fields:
+//   - buoyId: string (required) - The name/ID of the buoy
+//   - timestamp: string (required, ISO 8601) - The sensor's reading time
+//   - recordedAt: string (required, ISO 8601) - When we saved it
+//   - tempC: number (optional)
+//   - tempF: number (optional)
+//   - airTempC: number (optional)
+//   - airTempF: number (optional)
+//   - windSpeed: number (optional)
+//   - precipitation: number (optional)
+//   - humidity: number (optional)
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string &&
+        dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    function isValidSnapshot(data) {
+      return data.keys().hasAll(['buoyId', 'timestamp', 'recordedAt']) &&
+             data.buoyId is string && data.buoyId.size() > 0 && data.buoyId.size() < 100 &&
+             isValidDateString(data.timestamp) &&
+             isValidDateString(data.recordedAt) &&
+             (!('tempC' in data) || data.tempC is number || data.tempC == null) &&
+             (!('tempF' in data) || data.tempF is number || data.tempF == null) &&
+             (!('airTempC' in data) || data.airTempC is number || data.airTempC == null) &&
+             (!('airTempF' in data) || data.airTempF is number || data.airTempF == null) &&
+             (!('windSpeed' in data) || data.windSpeed is number || data.windSpeed == null) &&
+             (!('precipitation' in data) || data.precipitation is number || data.precipitation == null) &&
+             (!('humidity' in data) || data.humidity is number || data.humidity == null) &&
+             (!('lat' in data) || data.lat is number || data.lat == null) &&
+             (!('lon' in data) || data.lon is number || data.lon == null) &&
+             (!('serverTime' in data) || data.serverTime is timestamp);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /buoy_snapshots/{snapshotId} {
+      // Allow anyone to read historical data
+      allow read: if true;
+      
+      // Allow anyone to contribute snapshots (with strict validation)
+      // This bypasses the need for Anonymous Auth to be enabled in the console
+      allow create: if isValidSnapshot(request.resource.data);
+      
+      // Snapshots should be immutable
+      allow update, delete: if false;
+    }
+
+    match /api_keys/{keyId} {
+      // Anyone can look up individual key details securely using the keyId
+      allow get: if true;
+      
+      // Allow unauthenticated creation and deletion of specific keys (guarded by cryptographically random keyIds)
+      allow create, delete: if true;
+      allow list, update: if false;
+    }
+    
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

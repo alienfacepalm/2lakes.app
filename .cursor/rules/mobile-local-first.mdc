@@ -1,0 +1,33 @@
+---
+description: >-
+  mobile/ is local-first — no app backend; history and prefs on-device only.
+  No Firebase, Express, or cloud sync unless the user explicitly requests it.
+globs: mobile/**
+alwaysApply: false
+---
+
+# Mobile local-first
+
+**`mobile/`** replaces the ~$50/mo AI Studio stack. **Make life easier** — not ads, nags, or guilt. See `mobile/docs/product-ethos.md`.
+
+## Must
+
+- Persist user/history data in **IndexedDB** or **`localStorage`** (`history-store.ts`, `background-history.ts`)
+- Fetch public buoy data from the **client** (`buoy-api.ts`)
+- Keep `/api/kc` a **stateless CORS relay** only (`functions/api/kc.ts`) — no DB, no auth
+- Add **Settings copy** for any new background fetch (local-only, frequency, cost)
+- Add **tests** for new persistence or collection rules (`mobile-tests` / `tests.mdc`)
+
+## Must not (in `mobile/`)
+
+- Firebase, Firestore, Express, Cloud Run, developer REST API, server-side history (free tier)
+- **Ads** — no ad SDKs; never gate features behind ads or rewarded video
+- **Donation nags** — donate lives in Settings only; no popups or interstitials
+- API keys or cloud sync without explicit user request and tradeoff discussion
+- Port patterns from repo root `server.ts` or `SettingsMenu` developer API
+
+## Policy
+
+**$0 hosting, no ads:** [mobile/docs/zero-cost-policy.md](mobile/docs/zero-cost-policy.md). Optional paid cloud backup is not required for sustainability.
+
+Full checklist and review workflow: **`mobile-local-first`** skill (`mobile/.cursor/skills/mobile-local-first/SKILL.md`).

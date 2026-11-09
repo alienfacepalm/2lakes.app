@@ -1,0 +1,34 @@
+---
+description: Busy dev port — kill the listener and reclaim; never hop to another port
+alwaysApply: true
+---
+
+# Port reclaim
+
+If a **fixed dev port** is in use, **kill the owning process and claim the port**. Do not hop ports, do not ask the user to pick another port, and do not work around with alternate URLs.
+
+## Fixed ports
+
+| Package | Directory | Port | Reclaim |
+|---------|-----------|------|---------|
+| Repo root | `./` | **3000** | `pnpm dev:port:free` or `pnpm dev` |
+| Mobile | `mobile/` | **5173** | `pnpm dev:port:free` or `pnpm dev` |
+
+These scripts run **`dev-port.mjs free`** before starting (also `pnpm dev:android` on mobile):
+
+- Root: [`scripts/dev-port.mjs`](scripts/dev-port.mjs)
+- Mobile: [`mobile/scripts/dev-port.mjs`](mobile/scripts/dev-port.mjs)
+
+## Agent workflow
+
+1. **Starting dev** — use `pnpm dev` (or `pnpm dev:android`) from the correct package dir; port reclaim is automatic.
+2. **`EADDRINUSE` / port in use** — run `pnpm dev:port:free` in that package dir, then retry. Report which PID was killed if the script logs it.
+3. **Bare `vite` / `tsx` without the guard** — stop; use `pnpm dev` instead, or run `pnpm dev:port:free` first.
+
+## Do not
+
+- Start on `5174+`, `3001+`, or any `--port` override to avoid a conflict.
+- Leave orphan listeners on 3000 or 5173.
+- Open `localhost:5174+` or alternate URLs as a workaround.
+
+Status: `pnpm dev:port:status` · Manual kill only: `pnpm dev:port:free`

@@ -1,0 +1,13 @@
+node_modules/
+.pnpm-store/
+build/
+dist/
+coverage/
+package-lock.json
+yarn.lock
+.DS_Store
+*.log
+.env*
+!.env.example
+.dev.vars
+.wrangler/
