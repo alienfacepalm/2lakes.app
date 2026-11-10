@@ -11,3 +11,4 @@ yarn.lock
 !.env.example
 .dev.vars
 .wrangler/
+worker/.data/

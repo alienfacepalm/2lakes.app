@@ -38,8 +38,9 @@ Execute in order; do not stop after commit.
    | **Unsure** | `cd mobile && pnpm test:pr` plus root `pnpm build` if root changed |
 
    List the commands you ran in the PR **Test plan**.
-2. **Review diff** — `git status`, `git diff`, `git log -5` for commit message style.
-3. **Commit → push → PR** — on the feature branch only (**`branch-commit-pr.mdc`**):
+2. **Docs and archive gate** — if the change is big (**`docs-and-archive.mdc`**), update the affected docs and move retired things into `.archive/` with `ARCHIVED.md`, in this same change. Add the checklist to the PR **Test plan**.
+3. **Review diff** — `git status`, `git diff`, `git log -5` for commit message style.
+4. **Commit → push → PR** — on the feature branch only (**`branch-commit-pr.mdc`**):
    - Commit — stage relevant files; imperative message (`feat:`, `fix:`, `chore:`).
    - Push — `git push -u origin HEAD`.
    - PR — `gh pr create` with Summary + Test plan; return the PR URL.
