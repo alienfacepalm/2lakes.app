@@ -5,11 +5,22 @@ on:
     branches: [main, master]
     paths:
       - "mobile/**"
+      - ".github/workflows/deploy-mobile.yml"
   workflow_dispatch:
 
 defaults:
   run:
     working-directory: mobile
+
+# GitHub Pages: Settings → Pages → Source = GitHub Actions
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -27,13 +38,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:pr
 
-  deploy:
+  build:
     needs: test
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -49,10 +56,26 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+        env:
+          # Custom domain 2lakes.app — root base path
+          VITE_BASE: /
 
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+      # SPA deep links: GitHub Pages serves 404.html when a path is missing.
+      - name: SPA 404 fallback
+        run: cp dist/index.html dist/404.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=2lakes-mobile
+          path: mobile/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

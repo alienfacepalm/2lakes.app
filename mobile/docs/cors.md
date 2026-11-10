@@ -1,6 +1,6 @@
 # CORS Gate Results
 
-King County buoy data cannot be fetched directly from a browser PWA — see [root README](../../README.md#moving-off-google-ai-studio) for how the mobile app replaces the AI Studio / Firestore stack.
+King County buoy data cannot be fetched directly from a **browser** PWA — see [root README](../../README.md#moving-off-google-ai-studio) for how the mobile app replaces the AI Studio / Firestore stack.
 
 Tested 2026-06-23.
 
@@ -9,6 +9,7 @@ Tested 2026-06-23.
 - Response: `HTTP 200`
 - **No `Access-Control-Allow-Origin` header**
 - Direct browser fetch from the PWA origin **will fail** (CORS blocked)
+- **Capacitor native** WebViews are not subject to that browser CORS rule, so Android/iOS may call King County directly as a display-only fallback when the local replica is empty
 
 ## NOAA / NWS (`api.weather.gov`)
 
@@ -16,13 +17,14 @@ Tested 2026-06-23.
 - **`Access-Control-Allow-Origin: *`**
 - Direct client fetch works with required `User-Agent` header
 
-## Decision
+## Decision (hosting cutover)
 
-**Option A approved:** Cloudflare Pages edge proxy at `/api/kc`
+**Source of truth:** Cloudflare Worker + D1 (`GET /v1/latest`, `/v1/history`). The UI reads IndexedDB replicas only.
 
-- Implemented in [`functions/api/kc.ts`](../functions/api/kc.ts)
-- Vite dev proxy in [`vite.config.ts`](../vite.config.ts) for local development
-- Client calls `/api/kc` via [`src/lib/buoy-api.ts`](../src/lib/buoy-api.ts)
-- NWS calls remain direct from the client (no proxy needed)
+| Surface | King County path |
+| --- | --- |
+| Local `pnpm dev` | Vite proxy `/api/kc` → King County |
+| Capacitor native | Direct `GenerateMapData.aspx` (no CORS) |
+| GitHub Pages PWA | **No** King County proxy — Worker + replica only |
 
-No Express, Firestore, or Cloud Run required.
+The old Cloudflare Pages Function at [`functions/api/kc.ts`](../functions/api/kc.ts) retires with the Pages host. NWS calls remain direct from the client.

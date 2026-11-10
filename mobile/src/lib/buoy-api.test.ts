@@ -7,8 +7,20 @@ import {
   SAMPLE_NWS_HOURLY,
   SAMPLE_NWS_POINT,
 } from "../test/fixtures/king-county";
-import { getAllBuoys, getBuoyData, resetBuoyApiForTests } from "./buoy-api";
+import {
+  getAllBuoys,
+  getBuoyData,
+  getKingCountyUrl,
+  KC_DIRECT_URL,
+  resetBuoyApiForTests,
+} from "./buoy-api";
 import { resetHistoryStoreForTests, upsertServerReadings, type ServerReading } from "./history-store";
+
+const nativeShell = vi.hoisted(() => ({
+  isNativeApp: vi.fn(() => false),
+}));
+
+vi.mock("./native-shell", () => nativeShell);
 
 function workerLatest(rows: ServerReading[] = []) {
   return new Response(JSON.stringify({ rows }), { status: 200 });
@@ -42,7 +54,7 @@ function mockFetch(opts: { latestRows?: ServerReading[]; workerDown?: boolean; k
       if (opts.workerDown) return new Response("down", { status: 503 });
       return workerLatest(opts.latestRows ?? [sampleReading(), sampleReading("Lake Washington")]);
     }
-    if (url.includes("/api/kc") || url.endsWith("/api/kc")) {
+    if (url.includes("/api/kc") || url.includes("green2.kingcounty.gov") || url.endsWith("/api/kc")) {
       if (opts.kcDown) return new Response("error", { status: 500 });
       return new Response(SAMPLE_KC_RESPONSE, { status: 200 });
     }
@@ -62,9 +74,26 @@ function mockFetch(opts: { latestRows?: ServerReading[]; workerDown?: boolean; k
   });
 }
 
+describe("getKingCountyUrl", () => {
+  afterEach(() => {
+    nativeShell.isNativeApp.mockReturnValue(false);
+  });
+
+  it("uses the Vite proxy path on web", () => {
+    nativeShell.isNativeApp.mockReturnValue(false);
+    expect(getKingCountyUrl()).toBe("/api/kc");
+  });
+
+  it("uses the direct King County URL on Capacitor native", () => {
+    nativeShell.isNativeApp.mockReturnValue(true);
+    expect(getKingCountyUrl()).toBe(KC_DIRECT_URL);
+  });
+});
+
 describe("getBuoyData", () => {
   beforeEach(async () => {
     resetBuoyApiForTests();
+    nativeShell.isNativeApp.mockReturnValue(false);
     sessionStorage.clear();
     await resetHistoryStoreForTests();
     vi.stubGlobal("fetch", mockFetch());
@@ -89,6 +118,17 @@ describe("getBuoyData", () => {
     expect(data.location).toBe("Lake Sammamish Buoy");
     expect(data.tempC).toBeCloseTo(18.5, 1);
     expect(data.status).toBe("ACTIVE");
+  });
+
+  it("on native, hits King County directly when Worker is down and replica is empty", async () => {
+    nativeShell.isNativeApp.mockReturnValue(true);
+    const fetchMock = mockFetch({ workerDown: true });
+    vi.stubGlobal("fetch", fetchMock);
+    const data = await getBuoyData("Lake Sammamish");
+    expect(data.tempC).toBeCloseTo(18.5, 1);
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes("green2.kingcounty.gov"))).toBe(
+      true
+    );
   });
 
   it("returns session cache when live fetch fails", async () => {
