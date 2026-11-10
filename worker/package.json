@@ -1,0 +1,22 @@
+{
+  "name": "2lakes-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cloudflare Worker + D1: the source of truth for 2lakes buoy data.",
+  "scripts": {
+    "dev": "wrangler dev --test-scheduled",
+    "deploy": "node scripts/with-ci.mjs wrangler deploy",
+    "migrate:remote": "node scripts/with-ci.mjs wrangler d1 migrations apply 2lakes-buoys --remote",
+    "migrate:local": "node scripts/with-ci.mjs wrangler d1 migrations apply 2lakes-buoys --local",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "export:firestore": "node scripts/export-firestore.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250101.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0",
+    "wrangler": "^4.0.0"
+  }
+}

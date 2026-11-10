@@ -1,0 +1,18 @@
+name = "2lakes-api"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+# Collector: fetch King County + NWS and upsert into D1.
+[triggers]
+crons = ["*/15 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "2lakes-buoys"
+# Resource id, not a secret. Local `wrangler dev` ignores it and uses a local SQLite file.
+database_id = "02f59239-8bc7-4b78-a316-92e95417136a"
+migrations_dir = "migrations"
+
+# Secrets (set with `wrangler secret put`, never committed):
+#   INGEST_TOKEN  bearer token for POST /ingest (GitHub Action fallback collector)

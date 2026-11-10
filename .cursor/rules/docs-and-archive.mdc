@@ -1,0 +1,69 @@
+---
+description: Big changes must update docs in the same change, and retired things go to .archive/ (committed), never just deleted
+alwaysApply: true
+---
+
+# Docs and archive
+
+When a **big change** lands, **docs are updated as part of the same change** and **whatever it retires is moved into `.archive/` and committed**. A big change is not finished until both are done.
+
+Related: **`feature-ship.mdc`** (this is a ship gate), **`repo-hygiene.mdc`**, **`branch-commit-pr.mdc`**.
+
+## What counts as a big change
+
+Any of these:
+
+- Hosting, deploy pipeline, domain or DNS changes.
+- A data store, sync model, or the public API contract changes (`worker/API.md`, `/v1/*`).
+- An app, package, service, or workflow is added, replaced, or retired.
+- Policy changes (`mobile/docs/zero-cost-policy.md`, privacy, no-ads, donations).
+- A change that makes an existing doc, diagram, or rule untrue.
+
+Not big: bug fixes, copy tweaks, dependency bumps, refactors that keep behavior and docs true.
+
+## Docs gate (same commit or same PR as the change)
+
+Before calling the change done, walk this list and update every item that is now wrong or missing:
+
+| Doc | When |
+|-----|------|
+| `README.md` | Setup, run, deploy, hosting, or architecture changed |
+| `worker/API.md` | Any `/v1/*` or `/ingest` shape, header, or limit changed |
+| `mobile/docs/*.md` | Cost, CORS, backup, or product-ethos facts changed |
+| `.cursor/rules/*.mdc` | A rule describes something that no longer exists |
+| Plan/architecture page (HTML + SVG) | A diagram or "today vs plan" claim changed |
+| Sibling repo docs (e.g. tabocalypse `PRIVACY.md`) | The shared API or a disclosed host changed |
+
+Rules for the docs themselves:
+
+- State what is true now. No "will be" for things that already shipped, no "is" for things not built.
+- Keep the migration note (the project was migrated from ai.studio) in the README header.
+- Say "source of truth" for D1 and "replica" for browser copies. Never "diary" in technical docs.
+- Do not claim things that were not verified (for example edge caching). Mark them unverified.
+- List the docs you updated in the PR Summary, or say "no doc impact" and why.
+
+## Archive gate (retire, do not delete)
+
+Anything a big change **replaces or retires** moves to `.archive/` instead of being deleted, and the move is **committed in the same change**.
+
+1. Pick a folder: `.archive/YYYY-MM-DD-<short-slug>/`.
+2. Move with `git mv` so history follows the files. Keep the original relative paths inside the folder.
+3. Add `ARCHIVED.md` in that folder: what it was, why it was retired, what replaced it, the last commit hash where it was live, and how to restore it.
+4. Fix references to the old paths (docs, workflows, configs) so nothing still points at them.
+5. Commit the archive together with the docs update. Do not leave it uncommitted or git-ignored.
+
+Archive rules:
+
+- `.archive/` is read-only history. Nothing in the live app, worker, build, or CI may import from it, run it, or deploy it.
+- It is excluded from builds by design. Root tooling lists explicit folders, and `mobile/` only lints and tests itself. If a new tool globs the repo root, exclude `.archive/` there.
+- Old docs get a banner on the first line: `> Archived YYYY-MM-DD. Superseded by <path or link>.`
+- **Never archive secrets.** Remove them, rotate them, and say so in the PR. Credentials stay out of the repo.
+- **Never archive generated output** (`node_modules/`, `dist/`, `coverage/`, build artifacts). `repo-hygiene.mdc` still deletes those.
+- Do not archive trivial or still-used files. If it is still live, it is not archived.
+- Old chat or plan artifacts that matter go here too, not only in someone's home folder.
+
+## Ship checklist (add to the PR Test plan)
+
+- [ ] Docs gate: updated, or "no doc impact" with a reason.
+- [ ] Archive gate: retired items moved to `.archive/` with `ARCHIVED.md`, committed.
+- [ ] No live file references an archived path.

@@ -24,6 +24,8 @@ Remove and do not commit:
 | `*.tsbuildinfo`, `test-results/`, `playwright-report/` | Tooling output |
 | Duplicate files (e.g. `Foo.tsx` + `foo.tsx`) | Windows casing drift |
 
+`.archive/` is **not** a stray artifact. It is committed on purpose (**`docs-and-archive.mdc`**). Retired code and docs move there with `git mv`; do not delete it during cleanup.
+
 ## When cleaning up
 
 - If `package-lock.json` appears after someone used npm, delete it and regenerate with `pnpm install`.
