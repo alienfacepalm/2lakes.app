@@ -1,4 +1,5 @@
 import { ingestFeed, runCollector, type CollectEnv } from "./collect";
+import { LATEST_READING_COLUMNS, shapeHistoryPage } from "./db";
 
 interface Env extends CollectEnv {
   /** Bearer token for POST /ingest. Set with `wrangler secret put INGEST_TOKEN`. */
@@ -41,10 +42,7 @@ function safeEqual(a: string, b: string): boolean {
 
 async function latest(env: Env): Promise<Response> {
   const { results } = await env.DB.prepare(
-    `SELECT s.* FROM snapshots s
-     JOIN (SELECT buoyId, MAX(timestamp) AS ts FROM snapshots GROUP BY buoyId) m
-       ON s.buoyId = m.buoyId AND s.timestamp = m.ts
-     ORDER BY s.buoyId`
+    `SELECT ${LATEST_READING_COLUMNS} FROM latest ORDER BY buoyId`
   ).all();
   return json({ rows: results }, 200, "public, max-age=60");
 }
@@ -62,23 +60,30 @@ async function history(env: Env, url: URL): Promise<Response> {
       )
     : env.DB.prepare("SELECT * FROM snapshots WHERE seq > ?1 ORDER BY seq LIMIT ?2").bind(afterSeq, limit + 1);
 
-  const { results } = await stmt.all<{ seq: number }>();
-  const hasMore = results.length > limit;
-  const rows = hasMore ? results.slice(0, limit) : results;
-  const nextSeq = rows.length > 0 ? rows[rows.length - 1]!.seq : afterSeq;
-  return json({ rows, nextSeq, hasMore }, 200, "public, max-age=30");
+  const [{ results }, stats] = await Promise.all([
+    stmt.all<{ seq: number }>(),
+    env.DB.prepare("SELECT maxSeq FROM stats WHERE id = 1").first<{ maxSeq: number }>(),
+  ]);
+  const maxSeq = stats?.maxSeq ?? 0;
+  return json(shapeHistoryPage(results, afterSeq, limit, maxSeq), 200, "public, max-age=30");
 }
 
 async function status(env: Env): Promise<Response> {
   const [sources, totals, buoys] = await Promise.all([
     env.DB.prepare("SELECT * FROM sync_state ORDER BY source").all(),
-    env.DB.prepare("SELECT COALESCE(MAX(seq), 0) AS maxSeq, COUNT(*) AS rowCount FROM snapshots").first(),
+    env.DB.prepare("SELECT maxSeq, rowCount FROM stats WHERE id = 1").first(),
     env.DB.prepare(
-      "SELECT buoyId, MAX(timestamp) AS latestTimestamp, COUNT(*) AS rowCount FROM snapshots GROUP BY buoyId ORDER BY buoyId"
+      "SELECT buoyId, timestamp AS latestTimestamp, rowCount FROM latest ORDER BY buoyId"
     ).all(),
   ]);
   return json(
-    { serverTime: new Date().toISOString(), ...totals, sources: sources.results, buoys: buoys.results },
+    {
+      serverTime: new Date().toISOString(),
+      maxSeq: (totals as { maxSeq?: number } | null)?.maxSeq ?? 0,
+      rowCount: (totals as { rowCount?: number } | null)?.rowCount ?? 0,
+      sources: sources.results,
+      buoys: buoys.results,
+    },
     200,
     "public, max-age=30"
   );

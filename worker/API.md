@@ -37,7 +37,9 @@ water temperature can be hours older than the air and wind values in the same re
 ## Routes
 
 ### `GET /v1/latest`
-The newest reading for each buoy. `{ "rows": [Reading, ...] }`
+The newest reading for each buoy (by `timestamp`). Served from a denormalized `latest`
+table so it stays O(buoys), not a scan of all snapshots.
+`{ "rows": [Reading, ...] }`
 
 ### `GET /v1/history?buoy=&afterSeq=&limit=`
 Readings with `seq > afterSeq`, oldest first.
@@ -46,13 +48,19 @@ Readings with `seq > afterSeq`, oldest first.
 - `limit` default `500`, maximum `1000`.
 - `buoy` optional, exact `buoyId`.
 
-Response: `{ "rows": [Reading, ...], "nextSeq": 123, "hasMore": true }`.
+Response: `{ "rows": [Reading, ...], "nextSeq": 123, "hasMore": true, "maxSeq": 456 }`.
+`maxSeq` is the highest `seq` currently in D1. Clients that store a `lastSeq` higher than
+`maxSeq` should treat the server as rebuilt and reset their cursor to `0`.
 To sync, keep calling with `afterSeq = nextSeq` until `hasMore` is `false`. A row that is
 corrected later gets a new `seq`, so a client that upserts by `(buoyId, timestamp)` always
 converges on the server's copy.
 
 ### `GET /v1/status`
 `{ serverTime, maxSeq, rowCount, sources: [...], buoys: [...] }`
+
+`maxSeq` and `rowCount` come from a denormalized `stats` row (refreshed on collect), not a
+full-table `COUNT(*)` on every request. `buoys` comes from `latest` and has one entry per
+buoy with `buoyId`, `latestTimestamp` and `rowCount`.
 
 `sources` has one entry per data source (`kingcounty`, `nws`, `ingest`) with
 `lastAttemptAt`, `lastSuccessAt`, `lastError`, `lastTimestamp` and `lastChanged`. For
@@ -69,5 +77,6 @@ JSON `{ "error": "..." }` with status 400, 401, 404, 413, 422, 500 or 503.
 
 ## Caching
 Responses carry `Cache-Control` headers for browsers (`/v1/latest` 60 seconds, `/v1/history`
-and `/v1/status` 30 seconds). Do not assume any Cloudflare edge caching on `*.workers.dev`
-(not yet verified), so budget for repeated requests reaching the Worker and D1.
+and `/v1/status` 30 seconds). Verified 2026-11-09: `*.workers.dev` does not send
+`cf-cache-status`, so there is no Cloudflare edge cache on this host. Budget for repeated
+requests reaching the Worker and D1; clients must cache.

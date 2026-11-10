@@ -44,6 +44,67 @@ WHERE snapshots.tempC IS NOT excluded.tempC
    OR (snapshots.precipitationProbability IS NULL AND excluded.precipitationProbability IS NOT NULL)
 `;
 
+/** Newest-by-timestamp row for one buoy, plus that buoy's total row count. */
+const REFRESH_LATEST_SQL = `
+INSERT INTO latest (
+  buoyId, seq, timestamp, recordedAt, tempC, tempF, airTempC, airTempF,
+  windSpeed, precipitation, humidity, dewpoint, precipitationProbability, lat, lon, updatedAt, rowCount
+)
+SELECT
+  s.buoyId, s.seq, s.timestamp, s.recordedAt, s.tempC, s.tempF, s.airTempC, s.airTempF,
+  s.windSpeed, s.precipitation, s.humidity, s.dewpoint, s.precipitationProbability, s.lat, s.lon, s.updatedAt,
+  (SELECT COUNT(*) FROM snapshots c WHERE c.buoyId = s.buoyId)
+FROM snapshots s
+WHERE s.buoyId = ?1
+ORDER BY s.timestamp DESC
+LIMIT 1
+ON CONFLICT(buoyId) DO UPDATE SET
+  seq = excluded.seq,
+  timestamp = excluded.timestamp,
+  recordedAt = excluded.recordedAt,
+  tempC = excluded.tempC,
+  tempF = excluded.tempF,
+  airTempC = excluded.airTempC,
+  airTempF = excluded.airTempF,
+  windSpeed = excluded.windSpeed,
+  precipitation = excluded.precipitation,
+  humidity = excluded.humidity,
+  dewpoint = excluded.dewpoint,
+  precipitationProbability = excluded.precipitationProbability,
+  lat = excluded.lat,
+  lon = excluded.lon,
+  updatedAt = excluded.updatedAt,
+  rowCount = excluded.rowCount
+`;
+
+const REFRESH_STATS_SQL = `
+INSERT INTO stats (id, maxSeq, rowCount)
+VALUES (
+  1,
+  (SELECT COALESCE(MAX(seq), 0) FROM snapshots),
+  (SELECT COUNT(*) FROM snapshots)
+)
+ON CONFLICT(id) DO UPDATE SET
+  maxSeq = excluded.maxSeq,
+  rowCount = excluded.rowCount
+`;
+
+/** Reading fields only — excludes the denormalized `rowCount` on `latest`. */
+export const LATEST_READING_COLUMNS =
+  "seq, buoyId, timestamp, recordedAt, tempC, tempF, airTempC, airTempF, windSpeed, precipitation, humidity, dewpoint, precipitationProbability, lat, lon, updatedAt";
+
+/**
+ * Refresh the denormalized `latest` rows for the given buoys and the global `stats`
+ * counters. Safe to call after every collect; cheap at two buoys.
+ */
+export async function refreshDerived(db: D1Database, buoyIds: string[]): Promise<void> {
+  const unique = [...new Set(buoyIds)].filter(Boolean);
+  const latestStmt = db.prepare(REFRESH_LATEST_SQL);
+  const batch = unique.map((id) => latestStmt.bind(id));
+  batch.push(db.prepare(REFRESH_STATS_SQL));
+  await db.batch(batch);
+}
+
 /** Upsert readings in one batch. Returns how many rows were inserted or changed. */
 export async function upsertReadings(
   db: D1Database,
@@ -72,7 +133,25 @@ export async function upsertReadings(
       )
     )
   );
-  return results.reduce((sum, res) => sum + (res.meta.changes ?? 0), 0);
+  const changed = results.reduce((sum, res) => sum + (res.meta.changes ?? 0), 0);
+  await refreshDerived(
+    db,
+    readings.map((r) => r.buoyId)
+  );
+  return changed;
+}
+
+/** Shape a history page and attach `maxSeq` so clients can detect a D1 rebuild. */
+export function shapeHistoryPage<T extends { seq: number }>(
+  results: T[],
+  afterSeq: number,
+  limit: number,
+  maxSeq: number
+): { rows: T[]; nextSeq: number; hasMore: boolean; maxSeq: number } {
+  const hasMore = results.length > limit;
+  const rows = hasMore ? results.slice(0, limit) : results;
+  const nextSeq = rows.length > 0 ? rows[rows.length - 1]!.seq : afterSeq;
+  return { rows, nextSeq, hasMore, maxSeq };
 }
 
 export async function recordSuccess(

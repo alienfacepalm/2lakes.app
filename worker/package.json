@@ -6,7 +6,9 @@
   "description": "Cloudflare Worker + D1: the source of truth for 2lakes buoy data.",
   "scripts": {
     "dev": "wrangler dev --test-scheduled",
-    "deploy": "wrangler deploy",
+    "deploy": "node scripts/with-ci.mjs wrangler deploy",
+    "migrate:remote": "node scripts/with-ci.mjs wrangler d1 migrations apply 2lakes-buoys --remote",
+    "migrate:local": "node scripts/with-ci.mjs wrangler d1 migrations apply 2lakes-buoys --local",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "export:firestore": "node scripts/export-firestore.mjs"
