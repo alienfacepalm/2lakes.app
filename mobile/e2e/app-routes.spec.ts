@@ -13,13 +13,13 @@ test.describe("2lakes mobile routes", () => {
     await expect(page.getByRole("link", { name: /dashboard/i })).toBeVisible();
   });
 
-  test("history tab shows on-device history notice", async ({ page }) => {
+  test("history tab shows on-device replica notice", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByText(/Lake Sammamish/i).first()).toBeVisible({ timeout: 15_000 });
 
     await page.getByRole("link", { name: /history/i }).click();
     await expect(page.getByText("24h History")).toBeVisible();
-    await expect(page.getByText(/On-Device History/i)).toBeVisible();
+    await expect(page.getByText(/On-Device Replica/i)).toBeVisible();
   });
 
   test("terms page is reachable", async ({ page }) => {
