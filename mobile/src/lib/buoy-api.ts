@@ -327,7 +327,7 @@ export async function getBuoyData(requestedBuoy: string): Promise<BuoyData> {
     }
 
     // 2. Screens read the replica, not the network.
-    let row = await getLatestReading(requestedBuoy);
+    const row = await getLatestReading(requestedBuoy);
 
     // 3. Direct King County only when the replica has nothing (Android / local proxy).
     if (!row) {
