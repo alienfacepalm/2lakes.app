@@ -34,13 +34,14 @@ import {
 } from "lucide-react";
 import type { BuoyData, MapBuoy, HistoryPoint } from "./types";
 import { getBuoyData, getAllBuoys } from "./lib/buoy-api";
-import { saveSnapshot, loadHistory } from "./lib/history-store";
+import { loadHistory } from "./lib/history-store";
 import {
   BACKGROUND_HISTORY_CHECK_MS,
   isBackgroundHistoryEnabled,
   runBackgroundHistoryCapture,
   setBackgroundHistoryEnabled as persistBackgroundHistoryEnabled,
 } from "./lib/background-history";
+import { requestPersistentStorage, syncIfStale } from "./lib/sync";
 import { getConditionIcon, getBuoyBackground, getTemperatureColor } from "./lib/utils.tsx";
 import { IconGallery } from "./components/icon-gallery";
 import { HistoryCharts } from "./components/history-charts";
@@ -187,55 +188,56 @@ export default function App() {
   }, [selectedBuoy]);
 
 
+  const refreshHistory = useCallback(() => {
+    void loadHistory(selectedBuoy).then(setHistory).catch(console.error);
+  }, [selectedBuoy]);
+
   const handleToggleBackgroundHistory = useCallback((enabled: boolean) => {
     setBackgroundHistoryEnabled(enabled);
     persistBackgroundHistoryEnabled(enabled);
     if (enabled) {
       void runBackgroundHistoryCapture().then((result) => {
-        if (!result.skipped && result.saved > 0) {
-          void loadHistory(selectedBuoy).then(setHistory).catch(console.error);
-        }
+        if (!result.skipped && result.saved > 0) refreshHistory();
       });
     }
-  }, [selectedBuoy]);
+  }, [refreshHistory]);
 
-  // Trigger save when data is ready (only while local history collection is enabled)
+  // Keep the local replica in step with D1 on open and when returning to the tab.
   useEffect(() => {
-    if (!backgroundHistoryEnabled || !data) return;
-    void saveSnapshot(selectedBuoy, data).catch(console.error);
-  }, [data, selectedBuoy, backgroundHistoryEnabled]);
+    void requestPersistentStorage();
+
+    const runSync = () => {
+      void syncIfStale().then((result) => {
+        if (result?.ok && result.changed > 0) refreshHistory();
+      });
+    };
+
+    runSync();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") runSync();
+    };
+    const onOnline = () => runSync();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onOnline);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onOnline);
+    };
+  }, [refreshHistory]);
 
   useEffect(() => {
     if (!backgroundHistoryEnabled) return;
 
-    const refreshHistoryIfNeeded = () => {
-      void loadHistory(selectedBuoy).then(setHistory).catch(console.error);
-    };
-
     const tick = () => {
       void runBackgroundHistoryCapture().then((result) => {
-        if (!result.skipped && result.saved > 0) {
-          refreshHistoryIfNeeded();
-        }
+        if (!result.skipped && result.saved > 0) refreshHistory();
       });
     };
 
     tick();
     const intervalId = window.setInterval(tick, BACKGROUND_HISTORY_CHECK_MS);
-    const onOnline = () => tick();
-    const onVisible = () => {
-      if (document.visibilityState === "visible") tick();
-    };
-
-    window.addEventListener("online", onOnline);
-    document.addEventListener("visibilitychange", onVisible);
-
-    return () => {
-      clearInterval(intervalId);
-      window.removeEventListener("online", onOnline);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [backgroundHistoryEnabled, selectedBuoy]);
+    return () => clearInterval(intervalId);
+  }, [backgroundHistoryEnabled, refreshHistory]);
 
   useEffect(() => {
     if (!selectedBuoy) return;
@@ -405,6 +407,7 @@ export default function App() {
           onShowRadar={() => setShowRadarModal(true)}
           backgroundHistoryEnabled={backgroundHistoryEnabled}
           onToggleBackgroundHistory={handleToggleBackgroundHistory}
+          onHistoryChanged={refreshHistory}
         />
         <AnimatePresence mode="wait">
           <Routes location={location}>
@@ -968,10 +971,9 @@ export default function App() {
                     <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 flex items-start gap-4">
                       <div className="mt-0.5"><Database className="w-5 h-5 text-primary" /></div>
                       <p className="text-xs leading-relaxed text-on-surface font-semibold">
-                        <span className="text-primary font-black uppercase tracking-wider block mb-1">On-Device History</span>
-                        {backgroundHistoryEnabled
-                          ? "Snapshots stay on this device (Settings → Background collection). About once an hour while you're online, one small fetch can add a point — no account, no cloud."
-                          : "Optional: turn on Background collection in Settings to build trend charts here. One small fetch about once an hour when you're online; everything stays on this phone."}
+                        <span className="text-primary font-black uppercase tracking-wider block mb-1">On-Device Replica</span>
+                        Charts read a photocopy of the official diary kept on this device. Opening the app syncs new
+                        readings; turn on Background sync in Settings for hourly catch-up while you are online.
                       </p>
                     </div>
                   </div>
@@ -1003,18 +1005,14 @@ export default function App() {
                         {isSelectedBuoyOffline && history.length === 0 
                           ? "Buoy is resting" 
                           : history.length === 0 
-                            ? backgroundHistoryEnabled
-                              ? "Charts need a little more time"
-                              : "History is optional"
+                            ? "Waiting for the first sync"
                             : "One more reading and charts appear"}
                       </p>
                       <p className="text-[10px] uppercase tracking-widest text-on-surface-variant opacity-40 mt-2 max-w-[240px]">
                         {isSelectedBuoyOffline && history.length === 0
                           ? "This sensor isn't sending data right now. You can still check other buoys on the Network tab."
                           : history.length === 0 
-                            ? backgroundHistoryEnabled
-                              ? "Keep using the app when you can — points collect quietly in the background on this device."
-                              : "Enable Background collection in Settings if you want local trend charts. No pressure — live conditions always work."
+                            ? "Open the app online once to photocopy readings onto this device. Charts appear after two points."
                             : `Collected ${history.length} of 2 points for trend lines.`}
                       </p>
                     </div>

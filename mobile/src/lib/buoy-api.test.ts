@@ -8,11 +8,42 @@ import {
   SAMPLE_NWS_POINT,
 } from "../test/fixtures/king-county";
 import { getAllBuoys, getBuoyData, resetBuoyApiForTests } from "./buoy-api";
+import { resetHistoryStoreForTests, upsertServerReadings, type ServerReading } from "./history-store";
 
-function mockFetch() {
+function workerLatest(rows: ServerReading[] = []) {
+  return new Response(JSON.stringify({ rows }), { status: 200 });
+}
+
+function sampleReading(buoyId = "Lake Sammamish"): ServerReading {
+  return {
+    seq: 1,
+    buoyId,
+    timestamp: "2026-11-09T20:02:00.000Z",
+    recordedAt: "2026-11-09T20:00:00.000Z",
+    tempC: 18.5,
+    tempF: 65,
+    airTempC: 16,
+    airTempF: 61,
+    windSpeed: 4,
+    precipitation: null,
+    humidity: 55,
+    dewpoint: 10,
+    precipitationProbability: 20,
+    lat: 47.58167,
+    lon: -122.09,
+    updatedAt: "2026-11-09T20:00:00.000Z",
+  };
+}
+
+function mockFetch(opts: { latestRows?: ServerReading[]; workerDown?: boolean; kcDown?: boolean } = {}) {
   return vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
+    if (url.includes("/v1/latest")) {
+      if (opts.workerDown) return new Response("down", { status: 503 });
+      return workerLatest(opts.latestRows ?? [sampleReading(), sampleReading("Lake Washington")]);
+    }
     if (url.includes("/api/kc") || url.endsWith("/api/kc")) {
+      if (opts.kcDown) return new Response("error", { status: 500 });
       return new Response(SAMPLE_KC_RESPONSE, { status: 200 });
     }
     if (url.includes("api.weather.gov/points/")) {
@@ -32,9 +63,10 @@ function mockFetch() {
 }
 
 describe("getBuoyData", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     resetBuoyApiForTests();
     sessionStorage.clear();
+    await resetHistoryStoreForTests();
     vi.stubGlobal("fetch", mockFetch());
   });
 
@@ -42,13 +74,21 @@ describe("getBuoyData", () => {
     vi.unstubAllGlobals();
   });
 
-  it("parses King County payload and augments with NWS", async () => {
+  it("prefers Worker latest into IndexedDB, then augments with NWS", async () => {
     const data = await getBuoyData("Lake Sammamish");
     expect(data.location).toBe("Lake Sammamish Buoy");
     expect(data.tempC).toBeCloseTo(18.5, 1);
     expect(data.status).toBe("ACTIVE");
     expect(data.hourlyForecast?.length).toBeGreaterThan(0);
     expect(data.sunrise).toBeTruthy();
+  });
+
+  it("falls back to King County when Worker is down and replica is empty", async () => {
+    vi.stubGlobal("fetch", mockFetch({ workerDown: true }));
+    const data = await getBuoyData("Lake Sammamish");
+    expect(data.location).toBe("Lake Sammamish Buoy");
+    expect(data.tempC).toBeCloseTo(18.5, 1);
+    expect(data.status).toBe("ACTIVE");
   });
 
   it("returns session cache when live fetch fails", async () => {
@@ -84,11 +124,21 @@ describe("getBuoyData", () => {
     expect(data.tempC).toBe(20);
     expect(data.location).toBe("Lake Sammamish Buoy");
   });
+
+  it("reads an already-synced replica without needing King County", async () => {
+    await upsertServerReadings([sampleReading()]);
+    vi.stubGlobal("fetch", mockFetch({ workerDown: true, kcDown: true }));
+    // Worker down, but /v1/latest fails — hydrate fails; local row still there.
+    // fetchLatest throws, then getLatestReading finds the row we upserted.
+    const data = await getBuoyData("Lake Sammamish");
+    expect(data.tempC).toBeCloseTo(18.5, 1);
+  });
 });
 
 describe("getAllBuoys", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     resetBuoyApiForTests();
+    await resetHistoryStoreForTests();
     vi.stubGlobal("fetch", mockFetch());
   });
 
@@ -96,22 +146,10 @@ describe("getAllBuoys", () => {
     vi.unstubAllGlobals();
   });
 
-  it("returns configured lakes including parsed Sammamish", async () => {
+  it("returns configured lakes including Worker-backed Sammamish", async () => {
     const buoys = await getAllBuoys();
+    expect(buoys.some((b) => b.name === "Lake Sammamish")).toBe(true);
     const sammamish = buoys.find((b) => b.name === "Lake Sammamish");
     expect(sammamish?.tempC).toBeCloseTo(18.5, 1);
-    expect(buoys.length).toBeGreaterThanOrEqual(3);
-  });
-
-  it("falls back to offline buoys when fetch fails", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => {
-        throw new Error("network down");
-      })
-    );
-    const buoys = await getAllBuoys();
-    expect(buoys.every((b) => b.tempC === null)).toBe(true);
-    expect(buoys.some((b) => b.name === "Lake Washington")).toBe(true);
   });
 });

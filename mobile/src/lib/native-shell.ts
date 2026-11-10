@@ -21,11 +21,47 @@ export function isAppShell(): boolean {
   return isNativeApp() || isStandalonePwa();
 }
 
+const PERIODIC_SYNC_TAG = "2lakes-sync";
+/** Prefer ~15 minutes; browsers may coerce to a longer floor. */
+const PERIODIC_SYNC_MIN_INTERVAL_MS = 15 * 60 * 1000;
+
+async function registerPeriodicSync(registration: ServiceWorkerRegistration): Promise<void> {
+  const periodic = registration as ServiceWorkerRegistration & {
+    periodicSync?: {
+      register: (tag: string, options: { minInterval: number }) => Promise<void>;
+    };
+  };
+  if (!periodic.periodicSync) return;
+  try {
+    const status = await navigator.permissions.query({
+      name: "periodic-background-sync" as PermissionName,
+    });
+    if (status.state === "denied") return;
+  } catch {
+    /* permission query unsupported — still try register */
+  }
+  try {
+    await periodic.periodicSync.register(PERIODIC_SYNC_TAG, {
+      minInterval: PERIODIC_SYNC_MIN_INTERVAL_MS,
+    });
+  } catch {
+    /* not an installed PWA / Chromium, or quota denied */
+  }
+}
+
 export function registerServiceWorkerIfWeb(): void {
   if (!("serviceWorker" in navigator) || isNativeApp()) return;
 
+  const base = import.meta.env.BASE_URL.endsWith("/")
+    ? import.meta.env.BASE_URL
+    : `${import.meta.env.BASE_URL}/`;
+  const swUrl = `${base}sw.js`;
+
   window.addEventListener("load", () => {
-    void navigator.serviceWorker.register("/sw.js");
+    void navigator.serviceWorker
+      .register(swUrl)
+      .then((registration) => registerPeriodicSync(registration))
+      .catch((err) => console.warn("Service worker registration failed:", err));
   });
 }
 

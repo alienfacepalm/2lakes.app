@@ -1,5 +1,4 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { SAMPLE_KC_RESPONSE } from "../test/fixtures/king-county";
 import {
   BACKGROUND_HISTORY_INTERVAL_MS,
   BACKGROUND_HISTORY_KEY,
@@ -10,7 +9,8 @@ import {
   runBackgroundHistoryCapture,
   setBackgroundHistoryEnabled,
 } from "./background-history";
-import { loadHistory, resetHistoryStoreForTests } from "./history-store";
+import { resetHistoryStoreForTests } from "./history-store";
+import type { SyncResult } from "./sync";
 
 describe("backgroundHistory preferences", () => {
   beforeEach(() => {
@@ -69,33 +69,42 @@ describe("runBackgroundHistoryCapture", () => {
   });
 
   it("skips when disabled", async () => {
-    const fetchRaw = vi.fn();
-    const result = await runBackgroundHistoryCapture(fetchRaw);
+    const sync = vi.fn();
+    const result = await runBackgroundHistoryCapture(sync);
     expect(result).toEqual({ saved: 0, skipped: true, reason: "disabled" });
-    expect(fetchRaw).not.toHaveBeenCalled();
+    expect(sync).not.toHaveBeenCalled();
   });
 
   it("skips when not due", async () => {
     setBackgroundHistoryEnabled(true);
     localStorage.setItem(BACKGROUND_HISTORY_LAST_RUN_KEY, String(Date.now()));
-    const fetchRaw = vi.fn();
-    const result = await runBackgroundHistoryCapture(fetchRaw);
+    const sync = vi.fn();
+    const result = await runBackgroundHistoryCapture(sync);
     expect(result).toEqual({ saved: 0, skipped: true, reason: "not-due" });
-    expect(fetchRaw).not.toHaveBeenCalled();
+    expect(sync).not.toHaveBeenCalled();
   });
 
-  it("saves snapshots from one King County response", async () => {
+  it("syncs from the Worker when enabled and due", async () => {
     setBackgroundHistoryEnabled(true);
-    const fetchRaw = vi.fn().mockResolvedValue(SAMPLE_KC_RESPONSE);
+    const ok: SyncResult = { ok: true, changed: 3, lastSeq: 9, pages: 1, reachedEnd: true };
+    const sync = vi.fn().mockResolvedValue(ok);
 
-    const result = await runBackgroundHistoryCapture(fetchRaw);
+    const result = await runBackgroundHistoryCapture(sync);
 
-    expect(fetchRaw).toHaveBeenCalledTimes(1);
+    expect(sync).toHaveBeenCalledTimes(1);
     expect(result.skipped).toBe(false);
-    expect(result.saved).toBeGreaterThan(0);
-
-    const history = await loadHistory("Lake Sammamish");
-    expect(history.length).toBeGreaterThan(0);
+    expect(result.saved).toBe(3);
     expect(getBackgroundHistoryLastRunAt()).not.toBeNull();
+  });
+
+  it("does not mark complete when sync fails", async () => {
+    setBackgroundHistoryEnabled(true);
+    const fail: SyncResult = { ok: false, error: "network", changed: 0, lastSeq: 0 };
+    const sync = vi.fn().mockResolvedValue(fail);
+
+    const result = await runBackgroundHistoryCapture(sync);
+
+    expect(result).toMatchObject({ skipped: true, reason: "error", saved: 0 });
+    expect(getBackgroundHistoryLastRunAt()).toBeNull();
   });
 });

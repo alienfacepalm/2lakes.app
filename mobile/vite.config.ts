@@ -7,7 +7,11 @@ import { defineConfig } from "vite";
 const DEV_PORT = 5173;
 const host = "127.0.0.1";
 
+/** GitHub Pages custom domain uses `/`. Set `VITE_BASE=/repo/` only for project-page previews. */
+const base = process.env.VITE_BASE || "/";
+
 export default defineConfig({
+  base,
   plugins: [react(), tailwindcss()],
   envPrefix: ["VITE_"],
   resolve: {

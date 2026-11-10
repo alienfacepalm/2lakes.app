@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   X,
@@ -9,9 +10,21 @@ import {
   ExternalLink,
   Database,
   Heart,
+  Download,
+  Upload,
+  Clock,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getDonateUrl, openDonatePage } from "../lib/donate";
+import {
+  DEFAULT_RETENTION_DAYS,
+  RETENTION_CHOICES,
+  exportHistory,
+  getRetentionDays,
+  importHistory,
+  pruneOldRecords,
+  setRetentionDays,
+} from "../lib/history-store";
 
 interface SettingsMenuProps {
   isOpen: boolean;
@@ -24,6 +37,13 @@ interface SettingsMenuProps {
   onShowRadar: () => void;
   backgroundHistoryEnabled: boolean;
   onToggleBackgroundHistory: (val: boolean) => void;
+  onHistoryChanged?: () => void;
+}
+
+function retentionLabel(days: number | null): string {
+  if (days === null) return "Forever";
+  if (days === 365) return "1 year";
+  return `${days} days`;
 }
 
 export const SettingsMenu = ({
@@ -37,8 +57,59 @@ export const SettingsMenu = ({
   onShowRadar,
   backgroundHistoryEnabled,
   onToggleBackgroundHistory,
+  onHistoryChanged,
 }: SettingsMenuProps) => {
   const donateUrl = getDonateUrl();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [retention, setRetention] = useState<number | null>(() => getRetentionDays());
+  const [transferMessage, setTransferMessage] = useState<string | null>(null);
+  const [transferBusy, setTransferBusy] = useState(false);
+
+  const handleRetentionChange = async (raw: string) => {
+    const days = raw === "forever" ? null : parseInt(raw, 10);
+    const next = days === null || Number.isFinite(days) ? days : DEFAULT_RETENTION_DAYS;
+    setRetentionDays(next);
+    setRetention(next);
+    await pruneOldRecords();
+    onHistoryChanged?.();
+  };
+
+  const handleExport = async () => {
+    setTransferBusy(true);
+    setTransferMessage(null);
+    try {
+      const data = await exportHistory();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `2lakes-history-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setTransferMessage(`Exported ${data.rows.length} readings`);
+    } catch (error) {
+      setTransferMessage(error instanceof Error ? error.message : "Export failed");
+    } finally {
+      setTransferBusy(false);
+    }
+  };
+
+  const handleImportFile = async (file: File | undefined) => {
+    if (!file) return;
+    setTransferBusy(true);
+    setTransferMessage(null);
+    try {
+      const parsed = JSON.parse(await file.text()) as unknown;
+      const result = await importHistory(parsed);
+      onHistoryChanged?.();
+      setTransferMessage(`Imported ${result.added} readings (${result.skipped} skipped)`);
+    } catch (error) {
+      setTransferMessage(error instanceof Error ? error.message : "Import failed");
+    } finally {
+      setTransferBusy(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -139,7 +210,7 @@ export const SettingsMenu = ({
 
               <section>
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-4 ml-1">
-                  Local history
+                  Local replica
                 </h3>
                 <div className="space-y-3">
                   <button
@@ -153,10 +224,10 @@ export const SettingsMenu = ({
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-black text-on-surface uppercase tracking-tight leading-none mb-1">
-                          Background collection
+                          Background sync
                         </p>
                         <p className="text-[10px] font-bold text-on-surface-variant leading-snug">
-                          Save readings on this device only
+                          Keep this photocopy current hourly
                         </p>
                       </div>
                     </div>
@@ -170,11 +241,71 @@ export const SettingsMenu = ({
                       />
                     </div>
                   </button>
+
+                  <label className="w-full flex items-center justify-between gap-3 p-4 rounded-2xl border bg-surface-container-low border-black/5 dark:border-white/10 cursor-pointer">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-surface-container-highest flex items-center justify-center text-on-surface shrink-0">
+                        <Clock className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-black text-on-surface uppercase tracking-tight leading-none mb-1">
+                          Keep history
+                        </p>
+                        <p className="text-[10px] font-bold text-on-surface-variant leading-snug">
+                          Older readings are pruned on this device
+                        </p>
+                      </div>
+                    </div>
+                    <select
+                      value={retention === null ? "forever" : String(retention)}
+                      onChange={(e) => void handleRetentionChange(e.target.value)}
+                      className="shrink-0 max-w-[7.5rem] rounded-xl border border-black/10 dark:border-white/10 bg-surface-container-highest px-2 py-2 text-xs font-bold text-on-surface"
+                    >
+                      {RETENTION_CHOICES.map((days) => (
+                        <option key={String(days)} value={days === null ? "forever" : String(days)}>
+                          {retentionLabel(days)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      disabled={transferBusy}
+                      onClick={() => void handleExport()}
+                      className="flex items-center gap-3 p-4 rounded-2xl bg-surface-container-low border border-black/5 dark:border-white/10 hover:bg-surface-container transition-all active:scale-[0.98] cursor-pointer text-left disabled:opacity-60"
+                    >
+                      <Download className="w-5 h-5 text-on-surface shrink-0" />
+                      <span className="text-xs font-black uppercase tracking-tight text-on-surface">Export</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={transferBusy}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-3 p-4 rounded-2xl bg-surface-container-low border border-black/5 dark:border-white/10 hover:bg-surface-container transition-all active:scale-[0.98] cursor-pointer text-left disabled:opacity-60"
+                    >
+                      <Upload className="w-5 h-5 text-on-surface shrink-0" />
+                      <span className="text-xs font-black uppercase tracking-tight text-on-surface">Import</span>
+                    </button>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/json,.json"
+                    className="hidden"
+                    onChange={(e) => void handleImportFile(e.target.files?.[0])}
+                  />
+
+                  {transferMessage && (
+                    <p className="text-[10px] font-bold text-on-surface-variant px-1">{transferMessage}</p>
+                  )}
+
                   <p className="text-[10px] font-medium text-on-surface-variant leading-relaxed px-1">
-                    When enabled, the app checks about once per hour while you&apos;re online and open—
-                    <span className="font-bold text-on-surface"> one small network request</span>, then
-                    history stays in local storage on your phone or browser (30-day retention). No cloud
-                    database; very inexpensive.
+                    The official diary lives in the cloud. This device keeps a{" "}
+                    <span className="font-bold text-on-surface">photocopy</span> for offline use and never writes
+                    readings back. Opening the app already syncs; background sync adds hourly catch-up while you
+                    are online.
                   </p>
                 </div>
               </section>
