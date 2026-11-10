@@ -1,6 +1,8 @@
 # Local-first architecture review (mobile/)
 
-Audit date: 2026-06-23. Scope: `mobile/` production PWA vs legacy repo root.
+> Archived 2026-11-10 as a point-in-time audit. Superseded by current [SKILL.md](SKILL.md), [cors.md](../../../docs/cors.md), and root [README.md](../../../../README.md) (GitHub Pages + Worker/D1 replicas; AI Studio root archived).
+
+Audit date: 2026-06-23. Scope: `mobile/` production PWA vs legacy repo root (now under `.archive/`).
 
 ## Verdict
 

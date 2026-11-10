@@ -20,11 +20,12 @@ Read [architecture-review.md](architecture-review.md) for the current compliance
 |-----------|---------|
 | **Make life easier** | Faster lake checks, less noise — see [product-ethos.md](../../../docs/product-ethos.md) |
 | **Free = no app backend** | No Express, Cloud Run, Firestore, or cloud history without a subscription |
-| **Device is source of truth** | IndexedDB / `localStorage` / `sessionStorage` at runtime |
+| **D1 = source of truth** | Worker D1 holds canonical buoy rows; browsers keep IndexedDB **replicas** |
+| **UI reads replicas only** | Never write buoy readings from the browser to D1 |
 | **Paid = backup copy only** | Encrypted blob upload; local-first on read; not cloud-primary DB |
-| **Opt-in collection** | Background history user-controlled, rate-limited (~1 KC fetch/hour) |
-| **Public data in, local out** | Public buoy APIs; free tier persists snapshots on-device only |
-| **Static deploy** | Ship `dist/` to Cloudflare Pages — **$0** target on free tier |
+| **Opt-in background sync** | Hourly Worker→replica sync when enabled (not direct KC from web) |
+| **Public data in, local out** | Worker collects KC; free tier persists replicas on-device |
+| **Static deploy** | Ship `dist/` to GitHub Pages — **$0** target |
 | **No ads** | Never add ad SDKs; never force users to view ads; never ad-gate features — [zero-cost-policy.md](../../../docs/zero-cost-policy.md) |
 | **Donations** | Settings-only external link via `VITE_DONATE_URL`; optional; must not block or nag |
 
@@ -32,12 +33,14 @@ Read [architecture-review.md](architecture-review.md) for the current compliance
 
 | Endpoint | Role | Stores data? |
 |----------|------|--------------|
-| `/api/kc` | CORS pass-through to King County (`functions/api/kc.ts`) | **No** — relay only |
+| Worker `/v1/*` | Public read API for replicas (`sync.ts`) | **No** on client — D1 is Worker-side |
+| `/api/kc` | Vite **dev** proxy to King County only | **No** — local relay |
+| Capacitor → King County | Native display-only fallback | **No** app backend |
 | `api.weather.gov` | Forecasts/alerts (direct from client) | **No** |
 | `static-maps.yandex.ru` | Map thumbnails | **No** |
 | `radar.weather.gov` | Radar iframe | **No** |
 
-`/api/kc` is the **only** project-hosted function. It must remain a **stateless GET proxy** — no keys, no DB, no user context, no logging of PII. See [docs/cors.md](../../../docs/cors.md).
+The web PWA does **not** host a King County CORS function on GitHub Pages. See [docs/cors.md](../../../docs/cors.md).
 
 ## On-device storage map
 
@@ -60,8 +63,8 @@ Before adding or changing behavior in `mobile/`:
 - [ ] **Opt-in if background** — periodic fetches need a Settings toggle + clear copy (cost, frequency, local-only)
 - [ ] **Minimize fetches** — prefer one King County read shared across buoys (`background-history.ts` pattern)
 - [ ] **No secrets in client** — no API keys, Firebase config, or Gemini keys
-- [ ] **No port from repo root** — do not copy `server.ts`, `SettingsMenu` developer API, or Firestore sync from `/`
-- [ ] **Tests** — Vitest for storage/parsing rules; mock `/api/kc` and NWS in tests
+- [ ] **No port from archive** — do not revive archived AI Studio `server.ts`, developer API, or Firestore sync
+- [ ] **Tests** — Vitest for storage/parsing/sync rules; mock Worker `/v1/*` and NWS in tests
 
 ## Red flags (reject or escalate)
 

@@ -1,6 +1,6 @@
 # CORS Gate Results
 
-King County buoy data cannot be fetched directly from a **browser** PWA — see [root README](../../README.md#moving-off-google-ai-studio) for how the mobile app replaces the AI Studio / Firestore stack.
+King County buoy data cannot be fetched directly from a **browser** PWA — see the [root README](../../README.md) for how the mobile app + Worker replace the AI Studio / Firestore stack.
 
 Tested 2026-06-23.
 
@@ -27,4 +27,4 @@ Tested 2026-06-23.
 | Capacitor native | Direct `GenerateMapData.aspx` (no CORS) |
 | GitHub Pages PWA | **No** King County proxy — Worker + replica only |
 
-The old Cloudflare Pages Function at [`functions/api/kc.ts`](../functions/api/kc.ts) retires with the Pages host. NWS calls remain direct from the client.
+The old Cloudflare Pages Function (`functions/api/kc.ts`) is archived under [`.archive/2026-11-10-cloudflare-pages-kc-proxy/`](../../.archive/2026-11-10-cloudflare-pages-kc-proxy/). NWS calls remain direct from the client.

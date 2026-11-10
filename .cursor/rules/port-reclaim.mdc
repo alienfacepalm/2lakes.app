@@ -11,24 +11,23 @@ If a **fixed dev port** is in use, **kill the owning process and claim the port*
 
 | Package | Directory | Port | Reclaim |
 |---------|-----------|------|---------|
-| Repo root | `./` | **3000** | `pnpm dev:port:free` or `pnpm dev` |
 | Mobile | `mobile/` | **5173** | `pnpm dev:port:free` or `pnpm dev` |
 
-These scripts run **`dev-port.mjs free`** before starting (also `pnpm dev:android` on mobile):
+These scripts run **`dev-port.mjs free`** before starting (also `pnpm android:connect` / `pnpm dev:android`):
 
-- Root: [`scripts/dev-port.mjs`](scripts/dev-port.mjs)
 - Mobile: [`mobile/scripts/dev-port.mjs`](mobile/scripts/dev-port.mjs)
 
 ## Agent workflow
 
-1. **Starting dev** — use `pnpm dev` (or `pnpm dev:android`) from the correct package dir; port reclaim is automatic.
-2. **`EADDRINUSE` / port in use** — run `pnpm dev:port:free` in that package dir, then retry. Report which PID was killed if the script logs it.
-3. **Bare `vite` / `tsx` without the guard** — stop; use `pnpm dev` instead, or run `pnpm dev:port:free` first.
+1. **Starting dev** — use `pnpm dev` (or `pnpm dev:android`) from `mobile/`; port reclaim is automatic.
+2. **`EADDRINUSE` / port in use** — run `pnpm dev:port:free` in `mobile/`, then retry. Report which PID was killed if the script logs it.
+3. **Bare `vite` without the guard** — stop; use `pnpm dev` instead, or run `pnpm dev:port:free` first.
 
 ## Do not
 
-- Start on `5174+`, `3001+`, or any `--port` override to avoid a conflict.
-- Leave orphan listeners on 3000 or 5173.
+- Start on `5174+` or any `--port` override to avoid a conflict.
+- Leave orphan listeners on 5173.
 - Open `localhost:5174+` or alternate URLs as a workaround.
+- Revive archived root port **3000** as a live app server.
 
 Status: `pnpm dev:port:status` · Manual kill only: `pnpm dev:port:free`

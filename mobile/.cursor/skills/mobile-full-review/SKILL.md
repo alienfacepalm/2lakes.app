@@ -35,15 +35,15 @@ End-to-end review workflow for a feature branch. Combines Karpathy-style surgica
 
 | Area | Verify |
 |------|--------|
-| **Buoy API** | `src/lib/buoy-api.ts` + `buoy-parse.ts`; KC via `/api/kc`; NWS client-side; session cache fallback |
-| **History** | `src/lib/history-store.ts` (IndexedDB); 30-day retention; opt-in `background-history.ts`; **no Firebase** |
+| **Buoy API** | `src/lib/buoy-api.ts` + `sync.ts`; Worker/IDB first; Capacitor KC display fallback; NWS client-side |
+| **History** | `src/lib/history-store.ts` (IndexedDB replicas); retention + opt-in background Worker sync; **no Firebase** |
 | **UI routes** | `src/app.tsx` routes match nav links (`/`, `/history`, `/network`, `/tos`, `/icons`) |
-| **PWA** | `public/manifest.json`, `public/sw.js`, icons, `assetlinks.json` |
-| **Edge** | `functions/api/kc.ts` proxy; Vite dev proxy in `vite.config.ts` |
-| **Local-first** | No Firebase/Express/cloud history; device storage only — skill **`mobile-local-first`** |
-| **Deploy** | `wrangler.toml`, `.github/workflows/mobile-ci.yml`, `deploy-mobile.yml` |
+| **PWA** | `public/manifest.json`, `public/sw.js`, icons, `assetlinks.json`, `CNAME` |
+| **Network** | Worker `/v1/*` for sync; Vite `/api/kc` **dev only**; no Pages Functions |
+| **Local-first** | UI reads replicas only; D1 is Worker source of truth — skill **`mobile-local-first`** |
+| **Deploy** | `.github/workflows/mobile-ci.yml`, `deploy-mobile.yml` (GitHub Pages) |
 | **Docs** | README commands match `package.json`; cors/packaging links use kebab-case paths |
-| **Tests** | Vitest for parse/API/utils/DB; Playwright for routes; mocked KC/NWS in e2e |
+| **Tests** | Vitest for parse/API/utils/DB/sync; Playwright for routes; mocked Worker/NWS in e2e |
 
 Common gaps to hunt:
 

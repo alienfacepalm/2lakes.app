@@ -11,7 +11,7 @@ New **features** (user-facing capability or multi-file behavior change) must not
 
 - New UI behavior, buoy/history logic, PWA/deploy changes, or a cohesive change the user describes as a feature.
 - Work expected to span multiple commits or more than a trivial one-file fix.
-- Changes under **repo root** (`src/`, `server.ts`) or **`mobile/`**.
+- Changes under **`mobile/`**, **`worker/`**, or repo hosting/docs that affect ship behavior.
 
 ## When you may stay on the current branch
 

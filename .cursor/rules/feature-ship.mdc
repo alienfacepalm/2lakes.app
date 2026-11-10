@@ -32,10 +32,9 @@ Execute in order; do not stop after commit.
    | `mobile/src/**` (TS/TSX) | `cd mobile && pnpm test:pr` |
    | `mobile/e2e/**`, `playwright.config.ts` | `cd mobile && pnpm test:e2e` |
    | `mobile/scripts/**` | `cd mobile && pnpm test:scripts` |
-   | Root `src/**`, `server.ts` | `pnpm lint && pnpm build` (repo root) |
-   | Docs / `.cursor/**` only | `pnpm lint` if TS touched; otherwise skip |
-   | **Both root and mobile** | Run checks for each touched package |
-   | **Unsure** | `cd mobile && pnpm test:pr` plus root `pnpm build` if root changed |
+   | `worker/**` | Worker package scripts / typecheck as applicable |
+   | Docs / `.cursor/**` / `.archive/**` only | Skip tests unless TS/config touched |
+   | **Unsure** | `cd mobile && pnpm test:pr` |
 
    List the commands you ran in the PR **Test plan**.
 2. **Docs and archive gate** — if the change is big (**`docs-and-archive.mdc`**), update the affected docs and move retired things into `.archive/` with `ARCHIVED.md`, in this same change. Add the checklist to the PR **Test plan**.
