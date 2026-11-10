@@ -1,10 +1,8 @@
 # 2lakes.app — Mobile PWA
 
-**This directory (`mobile/`) is the app.** Install, develop, test, and deploy from here — not from the repo root.
+**This directory (`mobile/`) is the app.** Install, develop, test, and ship from here.
 
-The top-level files (`../src/`, `../server.ts`, `../firebase-applet-config.json`, …) are the original **[Google AI Studio](https://ai.studio/apps/93efb958-567c-45af-ae4d-8a82dd625c16)** export. That hosted stack (Firestore + Cloud Run) is **~$50/month** and **will be shut down**; this PWA replaces it with IndexedDB history and Cloudflare Pages (free tier).
-
-See the [root README](../README.md) for the full AI Studio → `mobile/` migration story and prerequisites.
+The former Google AI Studio export at the repo root is archived under [`.archive/2026-11-10-ai-studio-root/`](../.archive/2026-11-10-ai-studio-root/). Production hosting is **GitHub Pages** + Cloudflare Worker/D1 replicas — see the [root README](../README.md).
 
 ## Quick start
 
@@ -14,7 +12,7 @@ pnpm install
 pnpm dev
 ```
 
-Open http://127.0.0.1:5173 — Vite proxies `/api/kc` to King County.
+Open http://127.0.0.1:5173 — Vite proxies `/api/kc` to King County for local display fallback only.
 
 ## Android emulator (frontend dev)
 
@@ -67,22 +65,23 @@ Do **not** use a browser tab for day-to-day mobile UI work — use `pnpm dev:and
 | `pnpm test:scripts` | Node tests for `scripts/dev-port.mjs` |
 | `pnpm test:e2e` | Playwright route tests (starts its own Vite) |
 | `pnpm test:pr` | test + scripts + build + lint (CI gate) |
-| `pnpm deploy` | Build + Cloudflare Pages deploy |
 
 ## Architecture
 
-- **Local-first** — no Express, Firebase, or Cloud Run; history and prefs on the **user's device**
-- **$0 hosting, no ads** — Cloudflare Pages free tier; see [docs/zero-cost-policy.md](docs/zero-cost-policy.md)
-- King County via `/api/kc` edge proxy (CORS relay only, not an app backend) + NOAA/NWS direct
-- History: **IndexedDB** on device (30-day retention, opt-in background collection)
-- Deploy: **Cloudflare Pages** static hosting (free tier)
+- **Local-first** — UI reads IndexedDB replicas only; D1 is the Worker **source of truth**
+- **$0 hosting, no ads** — GitHub Pages + Worker/D1 free tier; see [docs/zero-cost-policy.md](docs/zero-cost-policy.md)
+- Web PWA syncs from Worker `/v1/*`; Capacitor may call King County directly as display-only fallback
+- NOAA/NWS direct from the client
+- History: **IndexedDB** on device (default 365-day retention, opt-in background sync)
+- Deploy: **GitHub Pages** via Actions
 
 Agents: see skill **`mobile-local-first`** (`.cursor/skills/mobile-local-first/`) before adding persistence, sync, or server routes.
 
 ```
 mobile/
 ├── src/app.tsx              Main app shell + routes
-├── src/lib/buoy-api.ts       Client API (King County + NWS)
+├── src/lib/buoy-api.ts       Worker/IDB-first + KC display fallback
+├── src/lib/sync.ts           Worker → IndexedDB replica sync
 ├── src/lib/history-store.ts  IndexedDB snapshots
 ├── android/                 Capacitor native shell (dev + sideload)
 ├── src/lib/native-shell.ts  Status bar, splash, back button, app-shell CSS
@@ -92,40 +91,30 @@ mobile/
 
 See [`docs/cors.md`](docs/cors.md) for the CORS gate decision.
 
-## Deploy (Cloudflare Pages)
+## Deploy (GitHub Pages)
 
-```bash
-pnpm deploy
-```
+Push to `main` (or run the workflow manually). CI:
 
-CI: [`.github/workflows/mobile-ci.yml`](../.github/workflows/mobile-ci.yml) runs `pnpm test:pr` and Playwright e2e on PRs; [`.github/workflows/deploy-mobile.yml`](../.github/workflows/deploy-mobile.yml) deploys on push to `main`.
+- [`.github/workflows/mobile-ci.yml`](../.github/workflows/mobile-ci.yml) — `pnpm test:pr` + Playwright e2e on PRs
+- [`.github/workflows/deploy-mobile.yml`](../.github/workflows/deploy-mobile.yml) — build + Pages deploy on push to `main`
 
-Required GitHub secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
+Custom domain: `mobile/public/CNAME` → `2lakes.app`. SPA deep links use `404.html` (copy of `index.html`) in the artifact.
 
-After deploy, follow [`store/packaging.md`](store/packaging.md) for PWABuilder / TWA / iOS wrapper.
+After deploy, follow [`store/packaging.md`](store/packaging.md) for PWABuilder / TWA / iOS wrapper. Android TWA needs `assetlinks.json` on the domain.
 
 ## Env vars
 
 | Variable | Purpose |
 |----------|---------|
-| `VITE_KC_PROXY_URL` | Override King County proxy (default: `/api/kc`) |
-| `VITE_DONATE_URL` | HTTPS link for voluntary donations (Ko-fi, BMC, etc.); hides Donate in Settings when unset |
+| `VITE_API_BASE` | Override Worker API base (default in `src/lib/sync.ts`) |
+| `VITE_KC_PROXY_URL` | Override King County proxy (default: `/api/kc`, local/dev) |
+| `VITE_DONATE_URL` | HTTPS link for voluntary donations; hides Donate in Settings when unset |
+| `VITE_BASE` | Vite base path (CI sets `/` for `2lakes.app`) |
 
-See [`.env.example`](.env.example). For Cloudflare Pages, set `VITE_DONATE_URL` under project environment variables before build.
+See [`.env.example`](.env.example).
 
 ## Conventions
 
 **pnpm@11.5.0**, Node **>=22**, ESLint flat config, Vitest, Playwright e2e, `tsc -b` build, strict dev port 5173. Repo-wide rules: [`.cursor/rules/`](../.cursor/rules/) (root) and [`mobile/.cursor/rules/`](.cursor/rules/).
 
 **Cursor:** `/full-review` runs end-to-end gap review + tests — see [`.cursor/README.md`](.cursor/README.md).
-
-## Differences from repo root (AI Studio export — deprecated)
-
-| Feature | Repo root (`/`) | **`mobile/`** (this app) |
-|---------|-----------------|--------------------------|
-| Origin | Google AI Studio export | Ported + rebuilt for self-hosting |
-| Status | Shutting down (**~$50/mo** AI Studio / Firebase) | **Active production** |
-| Backend | Express + Cloud Run | Edge proxy only |
-| History | Firestore | IndexedDB (local) |
-| Developer API | Yes | Removed |
-| Package manager | pnpm at root (legacy layout) | pnpm in `mobile/` |

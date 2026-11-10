@@ -1,7 +1,7 @@
 ---
 description: >-
-  mobile/ is local-first — no app backend; history and prefs on-device only.
-  No Firebase, Express, or cloud sync unless the user explicitly requests it.
+  mobile/ is local-first — UI reads IndexedDB replicas; D1 is Worker source of truth.
+  No Firebase, Express, or client→D1 buoy writes unless the user explicitly requests it.
 globs: mobile/**
 alwaysApply: false
 ---
@@ -12,9 +12,10 @@ alwaysApply: false
 
 ## Must
 
-- Persist user/history data in **IndexedDB** or **`localStorage`** (`history-store.ts`, `background-history.ts`)
-- Fetch public buoy data from the **client** (`buoy-api.ts`)
-- Keep `/api/kc` a **stateless CORS relay** only (`functions/api/kc.ts`) — no DB, no auth
+- Persist user/history data in **IndexedDB** or **`localStorage`** (`history-store.ts`, sync/retention helpers)
+- **UI reads replicas only** — sync from Worker `/v1/*` into IndexedDB (`sync.ts`); never write buoy readings to D1 from the browser
+- Fetch display fallbacks from the **client** where allowed (`buoy-api.ts`: Worker/IDB first; Capacitor may call King County directly)
+- Local Vite `/api/kc` proxy is **dev-only** — not available on GitHub Pages
 - Add **Settings copy** for any new background fetch (local-only, frequency, cost)
 - Add **tests** for new persistence or collection rules (`mobile-tests` / `tests.mdc`)
 
@@ -24,7 +25,8 @@ alwaysApply: false
 - **Ads** — no ad SDKs; never gate features behind ads or rewarded video
 - **Donation nags** — donate lives in Settings only; no popups or interstitials
 - API keys or cloud sync without explicit user request and tradeoff discussion
-- Port patterns from repo root `server.ts` or `SettingsMenu` developer API
+- Port patterns from the archived AI Studio root (`server.ts`, developer API)
+- Reintroduce Cloudflare Pages Functions (`functions/api/kc.ts`) for the web PWA
 
 ## Policy
 

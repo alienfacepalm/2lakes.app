@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Karpathy guidelines
 
-Behavioral guardrails for all code work in **repo root and `mobile/`**. Related: **`tests.mdc`**, **`filenames.mdc`**.
+Behavioral guardrails for all code work in **`mobile/`** and **`worker/`**. Related: **`tests.mdc`**, **`filenames.mdc`**.
 
 ## Do not break anything
 

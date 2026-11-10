@@ -1,14 +1,14 @@
 ---
 description: File and directory naming — kebab-case on disk, PascalCase symbols in code
-globs: "{src,mobile}/**/*"
+globs: "mobile/**/*"
 alwaysApply: true
 ---
 
 # File and directory naming
 
-**kebab-case** for every new file and directory under `src/` (repo root) and `mobile/`. React component **symbols** stay **PascalCase**; only **paths on disk** follow this rule.
+**kebab-case** for every new file and directory under `mobile/`. React component **symbols** stay **PascalCase**; only **paths on disk** follow this rule.
 
-## Source (`src/**`, `mobile/src/**`)
+## Source (`mobile/src/**`)
 
 | Location | File pattern | Example |
 |----------|--------------|---------|
@@ -26,7 +26,6 @@ Bundler or framework entry files the toolchain expects by name:
 
 - `src/main.tsx`, `index.html`
 - `vite.config.ts`, `vitest.config.ts`, `playwright.config.ts`, `eslint.config.js`
-- `server.ts` (repo root Express entry)
 - `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json`
 
 Everything else under `src/` must be kebab-case (including `app.tsx`, not `App.tsx`).
@@ -48,7 +47,7 @@ Repo root `README.md` is fine (standard).
 
 ## When editing
 
-- **New files** must follow the tables above in both root and `mobile/`.
+- **New files** must follow the tables above under `mobile/`.
 - **Renames** update every import, doc link, and CI path in the same change.
 - **Windows:** case-only renames need a two-step move (`_tmp.tsx` → `app.tsx`) — NTFS is case-insensitive.
-- **Legacy PascalCase** files (e.g. root `App.tsx`) — rename to kebab-case when you touch them; do not add new PascalCase paths.
+- **Archived PascalCase** under `.archive/` stays as historical snapshot; do not add new PascalCase paths in live code.

@@ -4,15 +4,17 @@
 
 **User promise: free forever, no ads, nothing forced** — [product-ethos.md](product-ethos.md). Users never have to view advertisements, sponsored content, or donation prompts to use the app. Donations are opt-in from Settings only — not a paywall and not a substitute for ads.
 
-The AI Studio / Firestore / Cloud Run stack costs **~$50/month**. The mobile PWA replaces it **without** putting ads on users.
+The retired AI Studio / Firestore / Cloud Run stack cost **~$50/month**. The mobile PWA + Worker replace it **without** putting ads on users.
 
 ## What we run for $0
 
 | Piece | Cost | Notes |
 |-------|------|--------|
-| **Cloudflare Pages** | Free tier | Static `dist/` + `functions/api/kc` CORS relay |
-| **King County + NWS** | Free | Public APIs; client-side fetch |
-| **IndexedDB history** | $0 | On the user's device |
+| **GitHub Pages** | Free | Static `mobile/dist/` PWA (`2lakes.app`) |
+| **Cloudflare Worker + D1** | Free tier | Source of truth; public `/v1/*`; cron ingest |
+| **King County + NWS** | Free | Public APIs; Worker collects KC; NWS from client |
+| **IndexedDB replicas** | $0 | On the user's device |
+| **Monthly D1 archive** | $0 | GitHub Release via Actions |
 | **Ads** | **Never** | No AdMob, no programmatic ads, no sponsored placements — **not now, not as a fallback** |
 | **Feature gating** | **Never** | No “watch ad to unlock”, no premium tier required for buoys/history/forecasts |
 | **Donations** | **Optional** | Hidden unless `VITE_DONATE_URL` is set; never required; does not change app behavior |
@@ -50,14 +52,7 @@ Export/import uses the same `SnapshotRecord` shape as `history-store.ts`. No acc
 
 Only if you **want** optional revenue to fund something beyond buoy monitoring (e.g. longer retention in the cloud). It is **not** required to keep the app alive at $0. See [paid-backup-plan.md](paid-backup-plan.md) — treat as **optional**, not the default path.
 
-## Shut down the $50/mo stack
-
-1. Deploy `mobile/` to Cloudflare Pages (`pnpm deploy`).
-2. Point users at the Pages URL / PWA install — not AI Studio.
-3. Stop Cloud Run and Firestore writes on the old Firebase project.
-4. Do not re-enable root `server.ts` in production.
-
 ## Related
 
-- [cors.md](cors.md) — why `/api/kc` exists (not a paid backend)
+- [cors.md](cors.md) — why the web PWA uses Worker replicas instead of King County
 - Skill `mobile-local-first` — local-first architecture

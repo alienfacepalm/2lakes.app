@@ -2,9 +2,9 @@
 
 Generate native store packages from the deployed PWA URL.
 
-**Prerequisite:** Deploy `mobile/` to HTTPS — see [root README § Deploy to Cloudflare Pages](../../README.md#deploy-to-cloudflare-pages) and [`.github/workflows/deploy-mobile.yml`](../../.github/workflows/deploy-mobile.yml).
+**Prerequisite:** Deploy `mobile/` to HTTPS — see [root README § Hosting](../../README.md#hosting) and [`.github/workflows/deploy-mobile.yml`](../../.github/workflows/deploy-mobile.yml).
 
-Replace `YOUR_DEPLOYED_URL` below with your live URL (e.g. `https://2lakes-mobile.pages.dev`).
+Replace `YOUR_DEPLOYED_URL` below with your live URL (e.g. `https://2lakes.app` or `https://alienfacepalm.github.io/2lakes.app/`).
 
 ## Android (Trusted Web Activity)
 

@@ -18,7 +18,8 @@ The rule that governs this folder is `.cursor/rules/docs-and-archive.mdc`. When 
 
 | Folder | What | Replaced by |
 |--------|------|-------------|
-| _none yet_ | | |
+| [2026-11-10-ai-studio-root](2026-11-10-ai-studio-root/) | Google AI Studio export at repo root (Express + Firestore) | [`mobile/`](../mobile/) PWA + [`worker/`](../worker/) |
+| [2026-11-10-cloudflare-pages-kc-proxy](2026-11-10-cloudflare-pages-kc-proxy/) | Cloudflare Pages KC proxy + `_redirects` + Pages wrangler.toml | GitHub Pages + Worker/D1; Capacitor direct-KC |
 
 Add a row here whenever you add a folder.
 

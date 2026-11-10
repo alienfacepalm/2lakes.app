@@ -1,5 +1,5 @@
 ---
-description: pnpm only — root and mobile; no npm/yarn lockfiles
+description: pnpm only — mobile and worker; no npm/yarn lockfiles
 alwaysApply: true
 ---
 
@@ -8,20 +8,20 @@ alwaysApply: true
 ## pnpm only
 
 - **pnpm only** — never `npm install`, `npm ci`, `yarn`, or commit `package-lock.json` / `yarn.lock`.
-- `packageManager` pins **pnpm@11.5.0** in root and `mobile/package.json`.
-- Lockfiles: **`pnpm-lock.yaml`** per package (repo root and `mobile/`).
+- `packageManager` pins **pnpm@11.5.0** in `mobile/package.json` (and `worker/` where present).
+- Lockfiles: **`pnpm-lock.yaml`** per live package (`mobile/`, `worker/`). The archived AI Studio root lockfile lives under `.archive/` only.
 - Node **>=22** (`engine-strict=true` in each `.npmrc`).
 
 ## Commands by package
 
-| Task | Repo root (`./`) | Mobile (`mobile/`) |
-|------|------------------|---------------------|
+| Task | Mobile (`mobile/`) | Worker (`worker/`) |
+|------|--------------------|--------------------|
 | Install | `pnpm install` | `pnpm install` |
-| Dev | `pnpm dev` (port **3000**, auto-reclaims) | `pnpm dev` (port **5173**, auto-reclaims) |
-| Build | `pnpm build` | `pnpm build` |
-| Lint | `pnpm lint` | `pnpm lint` |
-| Tests | — | `pnpm test`, `pnpm test:pr`, `pnpm test:e2e` |
-| Deploy | — | `pnpm deploy` |
+| Dev | `pnpm dev` (port **5173**, auto-reclaims) | `pnpm dev` (`wrangler`) |
+| Build | `pnpm build` | — |
+| Lint | `pnpm lint` | — |
+| Tests | `pnpm test`, `pnpm test:pr`, `pnpm test:e2e` | package scripts if present |
+| Deploy | GitHub Actions Pages workflow | `pnpm deploy` (ask first) |
 
 Run commands from the package directory that owns the changed files.
 

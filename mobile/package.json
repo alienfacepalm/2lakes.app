@@ -31,8 +31,7 @@
     "test:scripts": "node --test scripts/*.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:pr": "pnpm test && pnpm test:scripts && pnpm build && pnpm lint",
-    "deploy": "pnpm build && wrangler pages deploy dist --project-name=2lakes-mobile"
+    "test:pr": "pnpm test && pnpm test:scripts && pnpm build && pnpm lint"
   },
   "dependencies": {
     "@capacitor/android": "^7.6.7",
@@ -74,7 +73,6 @@
     "typescript": "~5.8.2",
     "typescript-eslint": "^8.59.2",
     "vite": "^6.2.0",
-    "vitest": "^4.1.8",
-    "wrangler": "^4.104.0"
+    "vitest": "^4.1.8"
   }
 }

@@ -5,14 +5,14 @@ alwaysApply: true
 
 # Tests required for new features
 
-Applies to **`mobile/`** (primary test suite) and **repo root** where tests exist or should be added.
+Applies to **`mobile/`** (primary test suite) and **`worker/`** where tests exist or should be added.
 
 ## When tests are required
 
 Add or extend automated tests in the **same PR** when you:
 
 - Ship **new user-facing behavior** (views, buoy selection, history charts).
-- Change **business rules** (parsing, conditions, cache/history retention, API routes in `server.ts`).
+- Change **business rules** (parsing, conditions, cache/history retention, Worker `/v1/*` contract).
 - Fix a **regression** — include a test that would have caught it.
 
 Docs-only, comment-only, or dependency bumps with no logic change are exempt unless they alter runtime behavior.
@@ -23,10 +23,10 @@ Docs-only, comment-only, or dependency bumps with no logic change are exempt unl
 |------|--------|----------|
 | Pure parsing / API helpers | Vitest | `mobile/src/lib/**/*.test.ts` |
 | React components | Vitest + Testing Library | `mobile/src/**/*.test.tsx` |
-| IndexedDB history | Vitest + fake-indexeddb | `mobile/src/lib/history-store.test.ts` |
+| IndexedDB history / sync | Vitest + fake-indexeddb | `mobile/src/lib/*.test.ts` |
 | Dev port scripts | Node test runner | `mobile/scripts/*.test.mjs` |
 | Full routes / navigation | Playwright | `mobile/e2e/*.spec.ts` |
-| Root app / server | Manual + `pnpm build` | `src/**`, `server.ts` (add Vitest when logic grows) |
+| Worker API | package tests if present | `worker/` |
 
 Run **`cd mobile && pnpm test`** for the mobile suite; **`pnpm test:pr`** before ship (**`feature-ship.mdc`**).
 
