@@ -20,9 +20,24 @@ import {
   upsertServerReadings,
   type SnapshotRecord,
 } from "./history-store";
+import { isNativeApp } from "./native-shell";
 import { fetchLatestFromWorker } from "./sync";
 
-const KC_URL = import.meta.env.VITE_KC_PROXY_URL || "/api/kc";
+/** Direct King County feed — Capacitor native WebView is not subject to browser CORS. */
+export const KC_DIRECT_URL = "https://green2.kingcounty.gov/lake-buoy/GenerateMapData.aspx";
+
+/**
+ * Where to pull King County text for display-only provisional rows.
+ * - Explicit `VITE_KC_PROXY_URL` always wins.
+ * - Native (Capacitor): hit King County directly.
+ * - Web / PWA: `/api/kc` (Vite dev proxy only). GitHub Pages has no proxy; PWA stays Worker/IDB.
+ */
+export function getKingCountyUrl(): string {
+  const override = import.meta.env.VITE_KC_PROXY_URL;
+  if (typeof override === "string" && override.length > 0) return override;
+  if (isNativeApp()) return KC_DIRECT_URL;
+  return "/api/kc";
+}
 
 const nwsCache: Record<string, { data: NwsBundle; expires: number }> = {};
 const CACHE_PREFIX = "2lakes-buoy-cache:";
@@ -54,7 +69,7 @@ interface NwsBundle {
 }
 
 export async function fetchKingCountyRaw(): Promise<string> {
-  const response = await fetch(KC_URL, {
+  const response = await fetch(getKingCountyUrl(), {
     signal: AbortSignal.timeout(NWS_TIMEOUT),
     headers: { "Cache-Control": "no-cache" },
   });

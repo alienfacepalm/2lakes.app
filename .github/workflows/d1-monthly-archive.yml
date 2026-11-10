@@ -1,0 +1,55 @@
+name: D1 monthly archive
+
+# Exports the D1 source of truth to a dated GitHub Release (no R2).
+# Needs repo secrets CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN (ask before setting).
+
+on:
+  schedule:
+    # 06:00 UTC on the 1st of each month
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Export D1 (remote)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CI: "true"
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID}" ] || [ -z "${CLOUDFLARE_API_TOKEN}" ]; then
+            echo "Missing CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN secrets."
+            exit 1
+          fi
+          DATE="$(date -u +%Y-%m-%d)"
+          OUT="2lakes-buoys-${DATE}.sql"
+          npx --yes wrangler@4 d1 export 2lakes-buoys --remote --output="${OUT}"
+          ls -lh "${OUT}"
+          echo "OUT=${OUT}" >> "$GITHUB_ENV"
+          echo "DATE=${DATE}" >> "$GITHUB_ENV"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="d1-archive-${DATE}"
+          TITLE="D1 archive ${DATE}"
+          NOTES="Monthly SQLite dump of D1 database \`2lakes-buoys\` (source of truth). Operator cost: \$0 (GitHub Releases)."
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release upload "${TAG}" "${OUT}" --clobber
+          else
+            gh release create "${TAG}" "${OUT}" --title "${TITLE}" --notes "${NOTES}"
+          fi
