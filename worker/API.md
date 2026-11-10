@@ -4,7 +4,9 @@ D1 is the source of truth for all 2lakes buoy readings. This API is its public, 
 front door. The 2lakes PWA and other consumers (for example the Tabocalypse extension) read
 it. Reads need no key and no account, and every response sends `Access-Control-Allow-Origin: *`.
 
-Base URL: the Worker's `*.workers.dev` address (it does not depend on the `2lakes.app` domain).
+Base URL: `https://2lakes-api.brandon-pliska-86a.workers.dev` (the Worker's `*.workers.dev`
+address; it does not depend on the `2lakes.app` domain). Live since 2026-11-09. The `workers.dev`
+host sends no `cf-cache-status` header, so responses are not edge-cached; clients should cache.
 
 Routes are versioned under `/v1`. After `/v1` ships, changes are additive only: new fields and
 new routes, never renamed or removed fields.
