@@ -1,0 +1,35 @@
+---
+description: Wrangler/Cloudflare must run non-interactively — never block agents on Windows prompts
+alwaysApply: true
+---
+
+# Cloudflare / Wrangler (non-interactive)
+
+Agents must run unattended for hours. **Never leave a Wrangler or Cloudflare CLI command waiting on a confirmation prompt.**
+
+## Before any `wrangler` command
+
+1. Load credentials from `~/.config/cloudflare/.env` into the process env (never commit them).
+2. Set **`CI=true`** in that same shell so Wrangler skips interactive confirms:
+   - PowerShell: `$env:CI = 'true'`
+   - bash: `export CI=true`
+3. Prefer package scripts under `worker/` (`pnpm migrate:remote`, `pnpm deploy`) which already set `CI`.
+
+## Migrations
+
+```powershell
+$env:CI = 'true'
+pnpm exec wrangler d1 migrations apply 2lakes-buoys --remote
+```
+
+Without `CI=true`, `d1 migrations apply` shows a Windows/TTY confirm and **hangs the agent**.
+
+## Deploy / secrets
+
+- Still **ask the user** before creating Cloudflare resources, setting secrets (`gh secret set`, `wrangler secret put`), or deploying — that is policy, not a TTY prompt.
+- Once approved, run the deploy **non-interactively** (`CI=true`); do not wait for a second on-screen confirm.
+
+## If a command might prompt
+
+- Set `CI=true` first, or refuse to run it until non-interactive flags/env are known.
+- Do not paste `y` into a hung prompt as the primary fix — fix the env so it never prompts.

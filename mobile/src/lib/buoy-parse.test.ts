@@ -100,16 +100,17 @@ describe("sensor helpers", () => {
   it("picks the newest timestamp", () => {
     const parts = [
       "Sammamish",
-      "2026-06-23T10:00:00Z",
+      "6/23/2026 2:00:00 AM",
       "18",
       "5",
       "0",
       "18.5",
-      "2026-06-23T12:00:00Z",
+      "6/23/2026 4:00:00 AM",
       "47.58",
       "-122.09",
       "Y",
     ];
-    expect(pickBestTimestamp(parts, 0)).toBe("2026-06-23T12:00:00Z");
+    // King County wall clock is fixed UTC-8 → add 8h.
+    expect(pickBestTimestamp(parts, 0)).toBe("2026-06-23T12:00:00.000Z");
   });
 });

@@ -140,3 +140,29 @@ export async function syncIfStale(now = Date.now(), fetchImpl: typeof fetch = fe
   if (last !== null && now - last < MIN_SYNC_INTERVAL_MS) return null;
   return syncHistory(fetchImpl);
 }
+
+/** Ask the browser to keep IndexedDB when storage is tight. Safe to call often; failures are fine. */
+export async function requestPersistentStorage(): Promise<boolean> {
+  try {
+    if (typeof navigator === "undefined" || !navigator.storage?.persist) return false;
+    if (await navigator.storage.persisted()) return true;
+    return await navigator.storage.persist();
+  } catch {
+    return false;
+  }
+}
+
+interface LatestResponse {
+  rows: ServerReading[];
+}
+
+/** Newest reading per buoy from D1. Used to hydrate the replica before the UI reads IndexedDB. */
+export async function fetchLatestFromWorker(fetchImpl: typeof fetch = fetch): Promise<ServerReading[]> {
+  const res = await fetchImpl(`${getApiBase()}/v1/latest`, {
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error(`API error ${res.status}`);
+  const body = (await res.json()) as Partial<LatestResponse>;
+  if (!body || !Array.isArray(body.rows)) throw new Error("unexpected response shape");
+  return body.rows.filter(isReading);
+}

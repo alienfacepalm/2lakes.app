@@ -189,6 +189,37 @@ export async function loadHistory(buoyId: string): Promise<HistoryPoint[]> {
     .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
 }
 
+/** Newest reading for one buoy in this device's replica, or null. */
+export async function getLatestReading(buoyId: string): Promise<SnapshotRecord | null> {
+  const db = await getDb();
+  const rows = await db.getAllFromIndex(STORE, "by-buoy", buoyId);
+  let best: SnapshotRecord | null = null;
+  let bestMs = -Infinity;
+  for (const row of rows) {
+    const ms = Date.parse(row.timestamp);
+    if (Number.isNaN(ms)) continue;
+    if (ms >= bestMs) {
+      best = row;
+      bestMs = ms;
+    }
+  }
+  return best;
+}
+
+/** Newest reading per buoyId currently stored on this device. */
+export async function getLatestReadings(): Promise<SnapshotRecord[]> {
+  const db = await getDb();
+  const all = await db.getAll(STORE);
+  const byBuoy = new Map<string, SnapshotRecord>();
+  for (const row of all) {
+    const ms = Date.parse(row.timestamp);
+    if (Number.isNaN(ms)) continue;
+    const prev = byBuoy.get(row.buoyId);
+    if (!prev || ms >= Date.parse(prev.timestamp)) byBuoy.set(row.buoyId, row);
+  }
+  return Array.from(byBuoy.values());
+}
+
 /** Delete readings older than the retention window, for one buoy or all of them. */
 export async function pruneOldRecords(buoyId?: string): Promise<number> {
   const cutoff = retentionCutoff();

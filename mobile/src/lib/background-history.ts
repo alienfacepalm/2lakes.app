@@ -1,10 +1,8 @@
-import { fetchKingCountyRaw } from "./buoy-api";
-import { buoyDataFromKingCountyLine, parseBuoyLines, parseMapBuoyLine } from "./buoy-parse";
-import { saveSnapshot } from "./history-store";
+import { syncHistory, type SyncResult } from "./sync";
 
 export const BACKGROUND_HISTORY_KEY = "backgroundHistoryEnabled";
 export const BACKGROUND_HISTORY_LAST_RUN_KEY = "backgroundHistoryLastRunAt";
-/** One King County fetch at most per hour while the setting is on. */
+/** Pull from the Worker at most once per hour while the setting is on. */
 export const BACKGROUND_HISTORY_INTERVAL_MS = 60 * 60 * 1000;
 /** How often to check whether the hourly window has elapsed (app must be open). */
 export const BACKGROUND_HISTORY_CHECK_MS = 5 * 60 * 1000;
@@ -13,6 +11,7 @@ export type BackgroundCaptureResult = {
   saved: number;
   skipped: boolean;
   reason?: "disabled" | "offline" | "not-due" | "error";
+  sync?: SyncResult;
 };
 
 export function isBackgroundHistoryEnabled(): boolean {
@@ -46,11 +45,12 @@ export function markBackgroundCaptureCompleted(at = Date.now()): void {
 }
 
 /**
- * One network request to King County, then write snapshots for every known buoy locally.
+ * Opt-in hourly catch-up: pull new D1 rows into this device's replica.
  * Skips when disabled, offline, or already ran within the last hour.
+ * App-open / visibility sync still runs separately via `syncIfStale`.
  */
 export async function runBackgroundHistoryCapture(
-  fetchRaw: () => Promise<string> = fetchKingCountyRaw
+  sync: typeof syncHistory = syncHistory
 ): Promise<BackgroundCaptureResult> {
   if (!isBackgroundHistoryEnabled()) {
     return { saved: 0, skipped: true, reason: "disabled" };
@@ -63,23 +63,14 @@ export async function runBackgroundHistoryCapture(
   }
 
   try {
-    const text = await fetchRaw();
-    const lines = parseBuoyLines(text);
-    let saved = 0;
-
-    for (const line of lines) {
-      const mapBuoy = parseMapBuoyLine(line);
-      if (!mapBuoy) continue;
-      const buoyData = buoyDataFromKingCountyLine(line, mapBuoy.name);
-      if (!buoyData?.timestamp) continue;
-      await saveSnapshot(mapBuoy.name, buoyData);
-      saved++;
+    const result = await sync();
+    if (!result.ok) {
+      return { saved: result.changed, skipped: true, reason: "error", sync: result };
     }
-
     markBackgroundCaptureCompleted();
-    return { saved, skipped: false };
+    return { saved: result.changed, skipped: false, sync: result };
   } catch (error) {
-    console.error("[backgroundHistory] capture failed:", error);
+    console.error("[backgroundHistory] sync failed:", error);
     return { saved: 0, skipped: true, reason: "error" };
   }
 }

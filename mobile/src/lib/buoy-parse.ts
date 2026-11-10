@@ -1,5 +1,6 @@
 import { BUOY_CONFIGS } from "../constants";
 import type { BuoyData, MapBuoy } from "../types";
+import { kingCountyLabelToUtcIso } from "./kc-time";
 
 export type TBuoyConfig = (typeof BUOY_CONFIGS)[keyof typeof BUOY_CONFIGS] & {
   fullName: string;
@@ -67,18 +68,20 @@ export function findNameIndex(parts: string[], config: TBuoyConfig): number {
   });
 }
 
+function coerceUtcTimestamp(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const fromKc = kingCountyLabelToUtcIso(raw);
+  if (fromKc) return fromKc;
+  // Fixtures / already-UTC ISO — never use this path for bare King County labels.
+  const ms = Date.parse(raw);
+  return Number.isNaN(ms) ? null : new Date(ms).toISOString();
+}
+
 export function pickBestTimestamp(parts: string[], nameIndex: number): string {
-  const ts1 = parts[nameIndex + 1];
-  const ts2 = parts[nameIndex + 6];
-  let bestTimestamp = ts1 || ts2 || new Date().toISOString();
-  try {
-    const d1 = ts1 ? new Date(ts1).getTime() : NaN;
-    const d2 = ts2 ? new Date(ts2).getTime() : NaN;
-    if (!isNaN(d2) && (isNaN(d1) || d2 > d1)) bestTimestamp = ts2;
-  } catch {
-    /* keep bestTimestamp */
-  }
-  return bestTimestamp;
+  const iso1 = coerceUtcTimestamp(parts[nameIndex + 1]);
+  const iso2 = coerceUtcTimestamp(parts[nameIndex + 6]);
+  if (iso1 && iso2) return Date.parse(iso2) > Date.parse(iso1) ? iso2 : iso1;
+  return iso1 || iso2 || new Date().toISOString();
 }
 
 export function isBuoyActive(parts: string[], tempC: number, airTempC: number, windSpeed: number): boolean {
